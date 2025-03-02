@@ -1,4 +1,4 @@
-import { initializeApp } from 'firebase/app'
+import { initializeApp, getApps } from 'firebase/app'
 import { getAuth } from 'firebase/auth'
 
 const firebaseConfig = {
@@ -10,13 +10,22 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID
 }
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig)
+// Check if we have all required environment variables
+if (!firebaseConfig.apiKey) {
+  throw new Error('Missing NEXT_PUBLIC_FIREBASE_API_KEY')
+}
+
+// Initialize Firebase only on client side and only once
+const app = !getApps().length ? initializeApp(firebaseConfig) : getApps()[0]
 const auth = getAuth(app)
 
-// Set language and region for phone auth
-auth.settings.appVerificationDisabledForTesting = false
-auth.languageCode = 'en'
+if (typeof window !== 'undefined') {
+  // Set language for SMS and reCAPTCHA
+  auth.languageCode = 'en'
+  
+  // Configure reCAPTCHA
+  auth.settings.appVerificationDisabledForTesting = false
+}
 
 // For development only
 if (process.env.NODE_ENV === 'development') {

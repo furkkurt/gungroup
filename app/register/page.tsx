@@ -42,7 +42,7 @@ export default function Register() {
     try {
       if (window.recaptchaVerifier) {
         window.recaptchaVerifier.clear()
-        delete window.recaptchaVerifier
+        window.recaptchaVerifier = undefined
       }
 
       const verifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
@@ -55,17 +55,19 @@ export default function Register() {
           setError('reCAPTCHA expired. Please solve it again.')
           if (window.recaptchaVerifier) {
             window.recaptchaVerifier.clear()
-            delete window.recaptchaVerifier
+            window.recaptchaVerifier = undefined
           }
         }
-      })
+      }, auth)
 
-      const widgetId = await verifier.render()
-      window.recaptchaWidgetId = widgetId
+      await verifier.render()
       return verifier
     } catch (error: unknown) {
       const firebaseError = error as FirebaseError
       console.error('Detailed reCAPTCHA setup error:', firebaseError)
+      if (firebaseError.message.includes('are-blocked')) {
+        setError('Please enable third-party cookies for reCAPTCHA to work')
+      }
       return null
     }
   }
@@ -92,7 +94,7 @@ export default function Register() {
       setError(firebaseError.message)
       if (window.recaptchaVerifier) {
         window.recaptchaVerifier.clear()
-        delete window.recaptchaVerifier
+        window.recaptchaVerifier = undefined
       }
     }
   }
@@ -241,6 +243,18 @@ export default function Register() {
           {error && (
             <div className="mt-4 text-red-400 text-sm">
               {error}
+              {error.includes('third-party cookies') && (
+                <div className="mt-2">
+                  <a 
+                    href="https://support.google.com/accounts/answer/61416"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-400 hover:underline"
+                  >
+                    Learn how to enable third-party cookies
+                  </a>
+                </div>
+              )}
             </div>
           )}
 
