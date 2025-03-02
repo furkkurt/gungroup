@@ -45,20 +45,24 @@ export default function Register() {
         window.recaptchaVerifier = undefined
       }
 
-      const verifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-        size: 'normal',
-        callback: (response: ReCaptchaResponse) => {
-          console.log('reCAPTCHA solved with response:', response)
-        },
-        'expired-callback': () => {
-          console.log('reCAPTCHA expired')
-          setError('reCAPTCHA expired. Please solve it again.')
-          if (window.recaptchaVerifier) {
-            window.recaptchaVerifier.clear()
-            window.recaptchaVerifier = undefined
+      const verifier = new RecaptchaVerifier(
+        auth,
+        'recaptcha-container',
+        {
+          size: 'normal',
+          callback: (response: ReCaptchaResponse) => {
+            console.log('reCAPTCHA solved with response:', response)
+          },
+          'expired-callback': () => {
+            console.log('reCAPTCHA expired')
+            setError('reCAPTCHA expired. Please solve it again.')
+            if (window.recaptchaVerifier) {
+              window.recaptchaVerifier.clear()
+              window.recaptchaVerifier = undefined
+            }
           }
         }
-      }, auth)
+      )
 
       await verifier.render()
       return verifier
