@@ -1,4 +1,4 @@
-import { initializeApp } from 'firebase/app';
+import { initializeApp, getApps } from 'firebase/app';
 import { getAnalytics } from 'firebase/analytics';
 import { getFirestore } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
@@ -15,13 +15,26 @@ const firebaseConfig = {
   measurementId: "G-JZ53PMDM88"
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
+// Initialize Firebase only if it hasn't been initialized
+const app = !getApps().length ? initializeApp(firebaseConfig) : getApps()[0];
 
 // Initialize services
 const db = getFirestore(app);
 const auth = getAuth(app);
 const storage = getStorage(app);
+
+// Configure auth settings only on client side
+if (typeof window !== 'undefined') {
+  auth.languageCode = 'tr';
+  auth.settings.appVerificationDisabledForTesting = false;
+}
+
+// Analytics is only available in the browser
+let analytics = null;
+if (typeof window !== 'undefined') {
+  import('firebase/analytics').then(({ getAnalytics }) => {
+    analytics = getAnalytics(app);
+  });
+}
 
 export { db, auth, storage, analytics }; 

@@ -1,61 +1,24 @@
 'use client'
 import { useState } from 'react'
-import { auth } from '@/lib/firebase'
-import { signInWithPhoneNumber, RecaptchaVerifier, ConfirmationResult } from 'firebase/auth'
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { FirebaseError, ReCaptchaResponse } from '@/types/firebase'
+import Link from 'next/link'
+import { auth } from '@/lib/firebase'
+import { signInWithCustomToken } from 'firebase/auth'
 
 export default function Login() {
   const [phoneNumber, setPhoneNumber] = useState('')
   const [verificationCode, setVerificationCode] = useState('')
-  const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null)
   const [step, setStep] = useState(1)
   const [error, setError] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
-
-  const setupRecaptcha = async () => {
-    try {
-      if (window.recaptchaVerifier) {
-        window.recaptchaVerifier.clear()
-        window.recaptchaVerifier = undefined
-      }
-
-      const verifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-        size: 'normal',
-        callback: (response: ReCaptchaResponse) => {
-          console.log('reCAPTCHA solved with response:', response)
-        },
-        'expired-callback': () => {
-          console.log('reCAPTCHA expired')
-          setError('reCAPTCHA expired. Please solve it again.')
-          if (window.recaptchaVerifier) {
-            window.recaptchaVerifier.clear()
-            window.recaptchaVerifier = undefined
-          }
-        }
-      })
-
-      const widgetId = await verifier.render()
-      window.recaptchaWidgetId = widgetId
-      window.recaptchaVerifier = verifier
-      return verifier
-    } catch (error: unknown) {
-      const firebaseError = error as FirebaseError
-      console.error('Detailed reCAPTCHA setup error:', firebaseError)
-      return null
-    }
-  }
 
   const sendVerificationCode = async (e: React.FormEvent) => {
     e.preventDefault()
-    try {
-      const verifier = await setupRecaptcha()
-      if (!verifier) {
-        setError('Failed to setup verification. Please try again.')
-        return
-      }
+    setError('')
+    setIsLoading(true)
 
+    try {
       let formattedPhone = phoneNumber.trim()
       if (!formattedPhone.startsWith('+')) {
         formattedPhone = formattedPhone.startsWith('0') 
@@ -63,31 +26,92 @@ export default function Login() {
           : `+90${formattedPhone}`
       }
 
-      console.log('Attempting verification for:', formattedPhone)
-      const confirmation = await signInWithPhoneNumber(auth, formattedPhone, verifier)
-      console.log('SMS sent successfully')
-      setConfirmationResult(confirmation)
-      setStep(2)
-      setError('')
-    } catch (err: unknown) {
-      const firebaseError = err as FirebaseError
-      console.error('Phone auth error:', firebaseError)
-      setError(firebaseError.message)
-      
-      if (window.recaptchaWidgetId !== undefined) {
-        window.grecaptcha?.reset(window.recaptchaWidgetId)
+      const response = await fetch('/api/auth/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phoneNumber: formattedPhone,
+          action: 'send'
+        })
+      })
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('Server error response:', errorText)
+        throw new Error(`Server error: ${response.status}`)
       }
+
+      const data = await response.json()
+      console.log('API Response:', data)
+
+      if (data.status === 'pending') {
+        if (data.customToken) {
+          localStorage.setItem('firebaseCustomToken', data.customToken)
+        }
+        if (data.uid) {
+          localStorage.setItem('userId', data.uid)
+        }
+        setStep(2)
+        setError('')
+      } else {
+        throw new Error(data.error || 'Failed to send verification code')
+      }
+    } catch (err) {
+      console.error('Login error:', err)
+      setError(err instanceof Error ? err.message : 'Failed to send verification code')
+    } finally {
+      setIsLoading(false)
     }
   }
 
   const verifyCode = async (e: React.FormEvent) => {
     e.preventDefault()
+    setError('')
+    setIsLoading(true)
+
     try {
-      await confirmationResult?.confirm(verificationCode)
-      router.push('/')
-    } catch (err: unknown) {
-      const firebaseError = err as FirebaseError
-      setError(firebaseError.message)
+      const response = await fetch('/api/auth/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phoneNumber,
+          code: verificationCode,
+          action: 'verify'
+        })
+      })
+
+      const data = await response.json()
+
+      if (data.valid) {
+        // Get the stored custom token
+        const customToken = localStorage.getItem('firebaseCustomToken')
+        if (!customToken) {
+          throw new Error('Authentication token not found')
+        }
+
+        // Sign in with Firebase using the custom token
+        await signInWithCustomToken(auth, customToken)
+        
+        // Clear the stored token
+        localStorage.removeItem('firebaseCustomToken')
+        
+        // Store user info
+        const user = {
+          phoneNumber,
+          uid: data.uid
+        }
+        localStorage.setItem('user', JSON.stringify(user))
+
+        // Redirect to home page
+        router.push('/')
+      } else {
+        setError('Invalid verification code')
+      }
+    } catch (err) {
+      console.error('Verification error:', err)
+      setError(err instanceof Error ? err.message : 'Failed to verify code')
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -99,10 +123,16 @@ export default function Login() {
         </h2>
       </div>
 
+      {error && (
+        <div className="mt-2 text-red-500 text-sm text-center">
+          {error}
+        </div>
+      )}
+
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-gray-800 py-8 px-4 shadow-xl sm:rounded-lg sm:px-10">
           {step === 1 ? (
-            <form id="phone-form" onSubmit={sendVerificationCode} className="space-y-6">
+            <form onSubmit={sendVerificationCode} className="space-y-6">
               <div>
                 <label htmlFor="phone" className="block text-sm font-medium text-gray-300">
                   Phone Number
@@ -110,7 +140,6 @@ export default function Login() {
                 <div className="mt-1">
                   <input
                     id="phone"
-                    name="phone"
                     type="tel"
                     required
                     value={phoneNumber}
@@ -121,19 +150,13 @@ export default function Login() {
                 </div>
               </div>
 
-              <div 
-                id="recaptcha-container" 
-                className="flex justify-center my-4 min-h-[100px] items-center border border-gray-700 rounded-md bg-gray-800"
-              >
-                Loading reCAPTCHA...
-              </div>
-
               <div>
                 <button
                   type="submit"
-                  className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  disabled={isLoading}
+                  className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
                 >
-                  Send Code
+                  {isLoading ? 'Sending...' : 'Send Code'}
                 </button>
               </div>
             </form>
@@ -146,7 +169,6 @@ export default function Login() {
                 <div className="mt-1">
                   <input
                     id="code"
-                    name="code"
                     type="text"
                     required
                     value={verificationCode}
@@ -160,18 +182,13 @@ export default function Login() {
               <div>
                 <button
                   type="submit"
-                  className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  disabled={isLoading}
+                  className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
                 >
-                  Verify
+                  {isLoading ? 'Verifying...' : 'Verify and Sign In'}
                 </button>
               </div>
             </form>
-          )}
-
-          {error && (
-            <div className="mt-4 text-red-400 text-sm">
-              {error}
-            </div>
           )}
 
           <div className="mt-6">
@@ -181,7 +198,7 @@ export default function Login() {
               </div>
               <div className="relative flex justify-center text-sm">
                 <span className="px-2 bg-gray-800 text-gray-400">
-                  Don&apos;t have an account?
+                  Don't have an account?
                 </span>
               </div>
             </div>

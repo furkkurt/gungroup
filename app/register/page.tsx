@@ -1,34 +1,21 @@
 'use client'
 import { useState } from 'react'
-import { auth } from '@/lib/firebase'
-import { 
-  signInWithPhoneNumber, 
-  RecaptchaVerifier, 
-  ConfirmationResult,
-  updateProfile
-} from 'firebase/auth'
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { FirebaseError, ReCaptchaResponse } from '@/types/firebase'
-
-interface FormData {
-  name: string
-  surname: string
-  email: string
-  phone: string
-}
+import Link from 'next/link'
+import { auth } from '@/lib/firebase'
+import { signInWithCustomToken } from 'firebase/auth'
 
 export default function Register() {
-  const [formData, setFormData] = useState<FormData>({
+  const [formData, setFormData] = useState({
     name: '',
     surname: '',
     email: '',
     phone: ''
   })
   const [verificationCode, setVerificationCode] = useState('')
-  const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null)
   const [step, setStep] = useState(1)
   const [error, setError] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -38,86 +25,121 @@ export default function Register() {
     })
   }
 
-  const setupRecaptcha = async () => {
-    try {
-      if (window.recaptchaVerifier) {
-        window.recaptchaVerifier.clear()
-        window.recaptchaVerifier = undefined
-      }
-
-      const verifier = new RecaptchaVerifier(
-        auth,
-        'recaptcha-container',
-        {
-          size: 'normal',
-          callback: (response: ReCaptchaResponse) => {
-            console.log('reCAPTCHA solved with response:', response)
-          },
-          'expired-callback': () => {
-            console.log('reCAPTCHA expired')
-            setError('reCAPTCHA expired. Please solve it again.')
-            if (window.recaptchaVerifier) {
-              window.recaptchaVerifier.clear()
-              window.recaptchaVerifier = undefined
-            }
-          }
-        }
-      )
-
-      await verifier.render()
-      return verifier
-    } catch (error: unknown) {
-      const firebaseError = error as FirebaseError
-      console.error('Detailed reCAPTCHA setup error:', firebaseError)
-      if (firebaseError.message.includes('are-blocked')) {
-        setError('Please enable third-party cookies for reCAPTCHA to work')
-      }
-      return null
-    }
-  }
-
   const sendVerificationCode = async (e: React.FormEvent) => {
     e.preventDefault()
+    setError('')
+    setIsLoading(true)
+    
     try {
-      const verifier = await setupRecaptcha()
-      if (!verifier) {
-        setError('Failed to setup verification. Please try again.')
-        return
+      let formattedPhone = formData.phone.trim()
+      if (!formattedPhone.startsWith('+')) {
+        formattedPhone = formattedPhone.startsWith('0') 
+          ? `+90${formattedPhone.substring(1)}` 
+          : `+90${formattedPhone}`
       }
 
-      const formattedPhone = formData.phone.startsWith('+') ? formData.phone : `+90${formData.phone}`
-      console.log('Attempting verification for:', formattedPhone)
+      console.log('Sending verification to:', formattedPhone)
       
-      const confirmation = await signInWithPhoneNumber(auth, formattedPhone, verifier)
-      setConfirmationResult(confirmation)
-      setStep(2)
-      setError('')
-    } catch (err: unknown) {
-      const firebaseError = err as FirebaseError
-      console.error('Phone auth error:', firebaseError)
-      setError(firebaseError.message)
-      if (window.recaptchaVerifier) {
-        window.recaptchaVerifier.clear()
-        window.recaptchaVerifier = undefined
+      const response = await fetch('/api/auth/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phoneNumber: formattedPhone,
+          action: 'send',
+          firstName: formData.name,
+          lastName: formData.surname,
+          email: formData.email
+        })
+      })
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('Server error response:', errorText)
+        throw new Error(`Server error: ${response.status}`)
       }
+
+      const data = await response.json()
+      console.log('API Response:', data)
+      
+      if (data.status === 'pending') {
+        // Store the customToken and uid for later use
+        if (data.customToken) {
+          localStorage.setItem('firebaseCustomToken', data.customToken)
+        }
+        if (data.uid) {
+          localStorage.setItem('userId', data.uid)
+        }
+        
+        console.log('Setting step to 2') // Debug log
+        setStep(2) // Change to verification step
+        setError('')
+      } else if (data.error) {
+        throw new Error(data.details || data.error)
+      } else {
+        throw new Error('Failed to send verification code')
+      }
+    } catch (err) {
+      console.error('SMS error:', err)
+      setError(err instanceof Error ? err.message : 'Failed to send verification code')
+    } finally {
+      setIsLoading(false)
     }
   }
 
   const verifyCode = async (e: React.FormEvent) => {
     e.preventDefault()
+    setError('')
+    setIsLoading(true)
+
     try {
-      const userCredential = await confirmationResult?.confirm(verificationCode)
-      if (userCredential?.user) {
-        await updateProfile(userCredential.user, {
-          displayName: `${formData.name} ${formData.surname}`
+      const response = await fetch('/api/auth/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phoneNumber: formData.phone,
+          code: verificationCode,
+          action: 'verify'
         })
-        router.push('/')
+      })
+
+      const data = await response.json()
+      
+      if (data.valid) {
+        // Get the stored custom token
+        const customToken = localStorage.getItem('firebaseCustomToken')
+        if (!customToken) {
+          throw new Error('Authentication token not found')
+        }
+
+        try {
+          // Sign in with Firebase
+          await signInWithCustomToken(auth, customToken)
+          
+          // Clear the stored token
+          localStorage.removeItem('firebaseCustomToken')
+          
+          // Store user info
+          const user = {
+            phoneNumber: formData.phone,
+            displayName: `${formData.name} ${formData.surname}`,
+            uid: data.uid
+          }
+          localStorage.setItem('user', JSON.stringify(user))
+
+          // Force a reload to update auth state everywhere
+          window.location.href = '/'
+        } catch (signInError) {
+          console.error('Sign in error:', signInError)
+          throw new Error('Failed to sign in with custom token')
+        }
       } else {
-        throw new Error('Failed to get user credentials')
+        setError(data.error || 'Invalid verification code')
       }
-    } catch (err: unknown) {
-      const firebaseError = err as FirebaseError
-      setError(firebaseError.message)
+    } catch (err) {
+      console.error('Verification error:', err)
+      setError(err instanceof Error ? err.message : 'Failed to verify code')
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -129,10 +151,16 @@ export default function Register() {
         </h2>
       </div>
 
+      {error && (
+        <div className="mt-2 text-red-500 text-sm text-center">
+          {error}
+        </div>
+      )}
+
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-gray-800 py-8 px-4 shadow-xl sm:rounded-lg sm:px-10">
           {step === 1 ? (
-            <form id="register-form" onSubmit={sendVerificationCode} className="space-y-6">
+            <form onSubmit={sendVerificationCode} className="space-y-6">
               <div>
                 <label htmlFor="name" className="block text-sm font-medium text-gray-300">
                   First Name
@@ -202,14 +230,13 @@ export default function Register() {
                 </div>
               </div>
 
-              <div id="recaptcha-container"></div>
-
               <div>
                 <button
                   type="submit"
-                  className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  disabled={isLoading}
+                  className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
                 >
-                  Send Code
+                  {isLoading ? 'Sending...' : 'Send Code'}
                 </button>
               </div>
             </form>
@@ -242,24 +269,6 @@ export default function Register() {
                 </button>
               </div>
             </form>
-          )}
-
-          {error && (
-            <div className="mt-4 text-red-400 text-sm">
-              {error}
-              {error.includes('third-party cookies') && (
-                <div className="mt-2">
-                  <a 
-                    href="https://support.google.com/accounts/answer/61416"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-400 hover:underline"
-                  >
-                    Learn how to enable third-party cookies
-                  </a>
-                </div>
-              )}
-            </div>
           )}
 
           <div className="mt-6">
