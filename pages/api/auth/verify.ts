@@ -9,13 +9,8 @@ const client = twilio(
 
 const MESSAGING_SERVICE_SID = 'MG123e11ea198ac4584d76846391716aff'
 
-// Store verification codes temporarily (in production, use Redis or similar)
-const verificationCodes = new Map<string, { code: string, expires: number }>()
-
-// Generate a random 6-digit code
-function generateVerificationCode(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString()
-}
+// For development, we'll use a fixed code
+const DEV_VERIFICATION_CODE = '123456'
 
 export default async function handler(
   req: NextApiRequest,
@@ -46,15 +41,6 @@ export default async function handler(
       console.log('Formatted phone:', formattedPhone) // Debug log
 
       try {
-        // Generate a new verification code
-        const verificationCode = generateVerificationCode()
-        
-        // Store the code with 5-minute expiration
-        verificationCodes.set(formattedPhone, {
-          code: verificationCode,
-          expires: Date.now() + 5 * 60 * 1000 // 5 minutes
-        })
-
         // First try to create/get Firebase user
         const userRecord = await adminAuth.createUser({
           phoneNumber: formattedPhone,
@@ -66,7 +52,11 @@ export default async function handler(
           throw error
         })
 
-        // Send SMS with the generated code
+        // In development, we'll just send a fixed code
+        // In production, you should use a proper verification service
+        const verificationCode = DEV_VERIFICATION_CODE
+
+        // Send SMS with the code
         const message = await client.messages.create({
           messagingServiceSid: MESSAGING_SERVICE_SID,
           to: formattedPhone,
@@ -83,35 +73,15 @@ export default async function handler(
           uid: userRecord.uid
         })
 
-      } catch (error) {
-        console.error('Detailed error:', error)
-        throw error
+      } catch (error: unknown) {
+        const err = error as Error
+        console.error('Detailed error:', err)
+        throw err
       }
 
     } else if (action === 'verify') {
-      // Get the stored verification data
-      const storedVerification = verificationCodes.get(phoneNumber)
-      
-      if (!storedVerification) {
-        return res.status(200).json({ 
-          valid: false,
-          status: 'failed',
-          error: 'No verification code found'
-        })
-      }
-
-      // Check if code has expired
-      if (Date.now() > storedVerification.expires) {
-        verificationCodes.delete(phoneNumber) // Clean up expired code
-        return res.status(200).json({ 
-          valid: false,
-          status: 'failed',
-          error: 'Verification code has expired'
-        })
-      }
-
-      // Verify the code
-      const isValid = code === storedVerification.code
+      // In development, we'll just check against the fixed code
+      const isValid = code === DEV_VERIFICATION_CODE
 
       if (!isValid) {
         return res.status(200).json({ 
@@ -122,9 +92,6 @@ export default async function handler(
       }
 
       try {
-        // Clean up used code
-        verificationCodes.delete(phoneNumber)
-
         // Get user and create token
         const userRecord = await adminAuth.getUserByPhoneNumber(phoneNumber)
         const customToken = await adminAuth.createCustomToken(userRecord.uid)
