@@ -88,8 +88,10 @@ export default function Register() {
     e.preventDefault()
     setError('')
     setIsLoading(true)
+    console.log('=== Starting Verification ===')
 
     try {
+      console.log('Sending verification request...')
       const response = await fetch('/api/auth/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -100,41 +102,41 @@ export default function Register() {
         })
       })
 
+      console.log('Response status:', response.status)
       const data = await response.json()
+      console.log('Response data:', data)
       
       if (data.valid) {
-        // Get the stored custom token
+        console.log('Verification successful, getting custom token...')
         const customToken = localStorage.getItem('firebaseCustomToken')
         if (!customToken) {
           throw new Error('Authentication token not found')
         }
 
+        console.log('Signing in with custom token...')
         try {
-          // Sign in with Firebase
           await signInWithCustomToken(auth, customToken)
+          console.log('Sign in successful')
           
-          // Clear the stored token
           localStorage.removeItem('firebaseCustomToken')
           
-          // Store user info
           const user = {
             phoneNumber: formData.phone,
             displayName: `${formData.name} ${formData.surname}`,
             uid: data.uid
           }
           localStorage.setItem('user', JSON.stringify(user))
-
-          // Force a reload to update auth state everywhere
           window.location.href = '/'
         } catch (signInError) {
-          console.error('Sign in error:', signInError)
+          console.error('Sign in error details:', signInError)
           throw new Error('Failed to sign in with custom token')
         }
       } else {
         setError(data.error || 'Invalid verification code')
       }
     } catch (err) {
-      console.error('Verification error:', err)
+      console.error('=== Verification Error ===')
+      console.error(err)
       setError(err instanceof Error ? err.message : 'Failed to verify code')
     } finally {
       setIsLoading(false)

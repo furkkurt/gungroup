@@ -16,8 +16,11 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-  console.log('API called with method:', req.method);
-  console.log('Request body:', req.body);
+  console.log('=== API Request ===')
+  console.log('Method:', req.method)
+  console.log('Headers:', req.headers)
+  console.log('Body:', req.body)
+  console.log('=================')
 
   if (req.method !== 'POST') {
     console.log('Method not allowed:', req.method);
@@ -30,6 +33,7 @@ export default async function handler(
 
   try {
     if (action === 'send') {
+      console.log('=== Send Code Process ===')
       let formattedPhone = phoneNumber.trim().replace(/\s+/g, '')
       if (!formattedPhone.startsWith('+')) {
         formattedPhone = `+${formattedPhone}`
@@ -37,34 +41,33 @@ export default async function handler(
       if (!formattedPhone.startsWith('+90')) {
         formattedPhone = `+90${formattedPhone.substring(1)}`
       }
-
-      console.log('Formatted phone:', formattedPhone) // Debug log
+      console.log('Formatted phone:', formattedPhone)
 
       try {
-        // First try to create/get Firebase user
+        console.log('Creating/getting Firebase user...')
         const userRecord = await adminAuth.createUser({
           phoneNumber: formattedPhone,
           disabled: false
         }).catch(async (error) => {
+          console.log('User creation failed, attempting to get existing user:', error)
           if (error.code === 'auth/phone-number-already-exists') {
             return await adminAuth.getUserByPhoneNumber(formattedPhone)
           }
           throw error
         })
+        console.log('User record:', userRecord)
 
-        // In development, we'll just send a fixed code
-        // In production, you should use a proper verification service
-        const verificationCode = DEV_VERIFICATION_CODE
+        console.log('Creating custom token...')
+        const customToken = await adminAuth.createCustomToken(userRecord.uid)
+        console.log('Custom token created')
 
-        // Send SMS with the code
+        console.log('Sending SMS...')
         const message = await client.messages.create({
           messagingServiceSid: MESSAGING_SERVICE_SID,
           to: formattedPhone,
-          body: `Your verification code is: ${verificationCode}`
+          body: `Your verification code is: ${DEV_VERIFICATION_CODE}`
         })
-
-        // Create custom token
-        const customToken = await adminAuth.createCustomToken(userRecord.uid)
+        console.log('SMS sent:', message.sid)
 
         return res.status(200).json({ 
           status: 'pending', 
@@ -74,14 +77,22 @@ export default async function handler(
         })
 
       } catch (error: unknown) {
-        const err = error as Error
-        console.error('Detailed error:', err)
-        throw err
+        console.error('=== Detailed Error ===')
+        console.error(error)
+        if (error instanceof Error) {
+          console.error('Name:', error.name)
+          console.error('Message:', error.message)
+          console.error('Stack:', error.stack)
+        }
+        throw error
       }
 
     } else if (action === 'verify') {
-      // In development, we'll just check against the fixed code
+      console.log('=== Verify Code Process ===')
+      console.log('Verifying code for phone:', phoneNumber)
+      
       const isValid = code === DEV_VERIFICATION_CODE
+      console.log('Code valid:', isValid)
 
       if (!isValid) {
         return res.status(200).json({ 
@@ -92,9 +103,13 @@ export default async function handler(
       }
 
       try {
-        // Get user and create token
+        console.log('Getting user record...')
         const userRecord = await adminAuth.getUserByPhoneNumber(phoneNumber)
+        console.log('User found:', userRecord.uid)
+
+        console.log('Creating custom token...')
         const customToken = await adminAuth.createCustomToken(userRecord.uid)
+        console.log('Custom token created')
 
         return res.status(200).json({ 
           valid: true,
@@ -103,25 +118,32 @@ export default async function handler(
           customToken
         })
       } catch (error: unknown) {
-        const err = error as Error
-        console.error('Error during verification:', err)
+        console.error('=== Verification Error ===')
+        console.error(error)
+        if (error instanceof Error) {
+          console.error('Name:', error.name)
+          console.error('Message:', error.message)
+          console.error('Stack:', error.stack)
+        }
         return res.status(500).json({
           error: 'Failed to verify user',
-          details: err.message
+          details: error instanceof Error ? error.message : 'Unknown error'
         })
       }
     }
 
   } catch (error: unknown) {
-    const err = error as Error
-    console.error('Handler error:', {
-      message: err.message,
-      stack: err.stack
-    })
+    console.error('=== Handler Error ===')
+    console.error(error)
+    if (error instanceof Error) {
+      console.error('Name:', error.name)
+      console.error('Message:', error.message)
+      console.error('Stack:', error.stack)
+    }
     
     return res.status(500).json({ 
       error: 'Failed to process request',
-      details: err.message
+      details: error instanceof Error ? error.message : 'Unknown error'
     })
   }
 } 
