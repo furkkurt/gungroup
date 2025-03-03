@@ -1,4 +1,4 @@
-import { ConfirmationResult, RecaptchaVerifier } from 'firebase/auth'
+import { RecaptchaVerifier, ConfirmationResult } from 'firebase/auth'
 
 export interface FirebaseError {
   code: string
@@ -14,6 +14,7 @@ declare global {
   interface Window {
     recaptchaVerifier?: RecaptchaVerifier
     recaptchaWidgetId?: number
+    confirmationResult?: ConfirmationResult
     grecaptcha?: {
       reset: (widgetId: number) => void
     }

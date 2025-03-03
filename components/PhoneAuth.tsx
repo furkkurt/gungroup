@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { auth } from '@/lib/firebase'
 import { 
   signInWithPhoneNumber, 
@@ -16,58 +16,67 @@ interface PhoneAuthProps {
 export default function PhoneAuth({ isLogin }: PhoneAuthProps) {
   const [phoneNumber, setPhoneNumber] = useState('')
   const [verificationCode, setVerificationCode] = useState('')
-  const [verificationId, setVerificationId] = useState<ConfirmationResult | null>(null)
+  const [verificationId, setVerificationId] = useState<any>(null)
   const [error, setError] = useState('')
   const router = useRouter()
 
-  const setupRecaptcha = async () => {
-    try {
+  useEffect(() => {
+    // Initialize reCAPTCHA verifier
+    if (!window.recaptchaVerifier) {
+      window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+        size: 'normal',
+        callback: () => {
+          // reCAPTCHA solved, allow signInWithPhoneNumber.
+        },
+        'expired-callback': () => {
+          // Response expired. Ask user to solve reCAPTCHA again.
+          setError('reCAPTCHA expired. Please try again.')
+        }
+      })
+    }
+
+    return () => {
+      // Cleanup
       if (window.recaptchaVerifier) {
         window.recaptchaVerifier.clear()
         window.recaptchaVerifier = undefined
       }
-
-      const verifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-        size: 'normal',
-        callback: (response: ReCaptchaResponse) => {
-          console.log('reCAPTCHA solved with response:', response)
-        },
-        'expired-callback': () => {
-          console.log('reCAPTCHA expired')
-          setError('reCAPTCHA expired. Please solve it again.')
-          if (window.recaptchaVerifier) {
-            window.recaptchaVerifier.clear()
-            window.recaptchaVerifier = undefined
-          }
-        }
-      })
-
-      const widgetId = await verifier.render()
-      window.recaptchaWidgetId = widgetId
-      window.recaptchaVerifier = verifier
-      return verifier
-    } catch (error: unknown) {
-      const firebaseError = error as FirebaseError
-      console.error('Detailed reCAPTCHA setup error:', firebaseError)
-      return null
     }
-  }
+  }, [])
 
   const handleSendCode = async (e: React.FormEvent) => {
     e.preventDefault()
+    setError('')
+
     try {
-      setupRecaptcha()
-      const formattedPhone = phoneNumber.startsWith('+') ? phoneNumber : `+${phoneNumber}`
+      if (!window.recaptchaVerifier) {
+        throw new Error('reCAPTCHA not initialized')
+      }
+
+      let formattedPhone = phoneNumber.trim()
+      if (!formattedPhone.startsWith('+')) {
+        formattedPhone = formattedPhone.startsWith('0') 
+          ? `+90${formattedPhone.substring(1)}` 
+          : `+90${formattedPhone}`
+      }
+
+      const verifier = window.recaptchaVerifier as RecaptchaVerifier
       const confirmationResult = await signInWithPhoneNumber(
-        auth, 
-        formattedPhone, 
-        window.recaptchaVerifier
+        auth,
+        formattedPhone,
+        verifier
       )
       setVerificationId(confirmationResult)
       setError('')
     } catch (err) {
-      const firebaseError = err as FirebaseError
-      setError(firebaseError.message)
+      console.error('Error sending code:', err)
+      setError(err instanceof Error ? err.message : 'Failed to send verification code')
+      
+      // Reset reCAPTCHA on error
+      if (window.recaptchaVerifier) {
+        window.recaptchaVerifier.clear()
+        window.recaptchaVerifier = undefined
+      }
     }
   }
 
