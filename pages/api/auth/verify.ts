@@ -135,11 +135,12 @@ export default async function handler(
           uid: userRecord.uid,
           customToken
         })
-      } catch (error) {
-        console.error('Error during verification:', error)
+      } catch (error: unknown) {
+        const err = error as Error
+        console.error('Error during verification:', err)
         return res.status(500).json({
           error: 'Failed to verify user',
-          details: error.message
+          details: err.message
         })
       }
     }
