@@ -13,10 +13,14 @@ const firebaseConfig = {
   measurementId: "G-JZ53PMDM88"
 }
 
+// Initialize Firebase with auth persistence
 const app = initializeApp(firebaseConfig)
+export const auth = getAuth(app)
+auth.setPersistence('browserLocal')
+
+// Initialize other services
 const db = getFirestore(app)
 const storage = getStorage(app)
-export const auth = getAuth(app)
 
 // Enable cross-origin isolation
 auth.useDeviceLanguage()

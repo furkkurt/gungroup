@@ -3,6 +3,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { auth } from '@/lib/firebase'
 import { signInWithCustomToken } from 'firebase/auth'
+import { useRouter } from 'next/navigation'
 
 export default function Register() {
   const [formData, setFormData] = useState({
@@ -15,6 +16,7 @@ export default function Register() {
   const [step, setStep] = useState(1)
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const router = useRouter()
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -115,8 +117,12 @@ export default function Register() {
 
         console.log('Signing in with custom token...')
         try {
-          await signInWithCustomToken(auth, customToken)
-          console.log('Sign in successful')
+          // Sign out first to clear any existing auth state
+          await auth.signOut()
+          
+          // Sign in with the custom token
+          const userCredential = await signInWithCustomToken(auth, customToken)
+          console.log('Sign in successful:', userCredential.user)
           
           localStorage.removeItem('firebaseCustomToken')
           
@@ -126,9 +132,17 @@ export default function Register() {
             uid: data.uid
           }
           localStorage.setItem('user', JSON.stringify(user))
-          window.location.href = '/'
+
+          // Use router instead of window.location
+          router.push('/')
         } catch (signInError) {
           console.error('Sign in error details:', signInError)
+          // Log more details about the error
+          if (signInError instanceof Error) {
+            console.error('Error name:', signInError.name)
+            console.error('Error message:', signInError.message)
+            console.error('Error stack:', signInError.stack)
+          }
           throw new Error('Failed to sign in with custom token')
         }
       } else {
