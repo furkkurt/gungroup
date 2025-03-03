@@ -11,9 +11,6 @@ if (!admin.apps.length) {
       projectId: process.env.FIREBASE_PROJECT_ID
     });
 
-    // Configure Admin Auth settings
-    const auth = admin.auth();
-    
     console.log('Firebase Admin initialized successfully');
   } catch (error) {
     console.error('Firebase Admin initialization error:', error);
