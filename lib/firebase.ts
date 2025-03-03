@@ -18,7 +18,11 @@ const app = initializeApp(firebaseConfig)
 
 // Get Auth instance with persistence
 export const auth = getAuth()
-auth.settings.appVerificationDisabledForTesting = true // Add this for testing
+
+// Configure auth settings
+if (process.env.NODE_ENV !== 'production') {
+  auth.settings.appVerificationDisabledForTesting = true
+}
 
 // Set persistence
 setPersistence(auth, browserLocalPersistence)

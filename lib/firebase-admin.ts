@@ -13,7 +13,6 @@ if (!admin.apps.length) {
 
     // Configure Admin Auth settings
     const auth = admin.auth();
-    auth.tenantId = null; // Allow all tenants
     
     console.log('Firebase Admin initialized successfully');
   } catch (error) {
