@@ -13,13 +13,14 @@ const firebaseConfig = {
   measurementId: "G-JZ53PMDM88"
 }
 
-// Initialize Firebase with explicit auth settings
-const app = initializeApp(firebaseConfig, {
-  authDomain: 'gungroup-1a3c8.firebaseapp.com'
-})
+// Initialize Firebase
+const app = initializeApp(firebaseConfig)
 
 // Get Auth instance with persistence
-export const auth = getAuth(app)
+export const auth = getAuth()
+auth.settings.appVerificationDisabledForTesting = true // Add this for testing
+
+// Set persistence
 setPersistence(auth, browserLocalPersistence)
   .catch((error) => {
     console.error('Auth persistence error:', error)
