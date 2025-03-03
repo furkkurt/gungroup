@@ -144,17 +144,16 @@ export default async function handler(
       }
     }
 
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const err = error as Error
     console.error('Handler error:', {
-      message: error.message,
-      code: error.code,
-      stack: error.stack
+      message: err.message,
+      stack: err.stack
     })
     
     return res.status(500).json({ 
       error: 'Failed to process request',
-      details: error.message,
-      code: error.code
+      details: err.message
     })
   }
 } 
