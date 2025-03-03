@@ -2,26 +2,21 @@
 import { useState, useEffect } from 'react'
 import { auth } from '@/lib/firebase'
 import { 
-  signInWithPhoneNumber, 
   RecaptchaVerifier, 
-  ConfirmationResult 
+  signInWithPhoneNumber,
+  ConfirmationResult
 } from 'firebase/auth'
 import { useRouter } from 'next/navigation'
-import { FirebaseError, ReCaptchaResponse } from '@/types/firebase'
+import { FirebaseError } from '@/types/firebase'
 
-interface PhoneAuthProps {
-  isLogin: boolean
-}
-
-export default function PhoneAuth({ isLogin }: PhoneAuthProps) {
+export default function PhoneAuth() {
   const [phoneNumber, setPhoneNumber] = useState('')
   const [verificationCode, setVerificationCode] = useState('')
-  const [verificationId, setVerificationId] = useState<any>(null)
+  const [verificationId, setVerificationId] = useState<ConfirmationResult | null>(null)
   const [error, setError] = useState('')
   const router = useRouter()
 
   useEffect(() => {
-    // Initialize reCAPTCHA verifier
     if (!window.recaptchaVerifier) {
       window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
         size: 'normal',
@@ -29,14 +24,12 @@ export default function PhoneAuth({ isLogin }: PhoneAuthProps) {
           // reCAPTCHA solved, allow signInWithPhoneNumber.
         },
         'expired-callback': () => {
-          // Response expired. Ask user to solve reCAPTCHA again.
           setError('reCAPTCHA expired. Please try again.')
         }
       })
     }
 
     return () => {
-      // Cleanup
       if (window.recaptchaVerifier) {
         window.recaptchaVerifier.clear()
         window.recaptchaVerifier = undefined
@@ -72,7 +65,6 @@ export default function PhoneAuth({ isLogin }: PhoneAuthProps) {
       console.error('Error sending code:', err)
       setError(err instanceof Error ? err.message : 'Failed to send verification code')
       
-      // Reset reCAPTCHA on error
       if (window.recaptchaVerifier) {
         window.recaptchaVerifier.clear()
         window.recaptchaVerifier = undefined
@@ -98,7 +90,7 @@ export default function PhoneAuth({ isLogin }: PhoneAuthProps) {
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
       <div className="max-w-md w-full px-6 py-8 bg-white rounded-lg shadow-md">
         <h2 className="text-2xl font-bold text-center text-gray-800 mb-6">
-          {isLogin ? 'Login' : 'Register'} with Phone Number
+          Register with Phone Number
         </h2>
         
         {error && (
