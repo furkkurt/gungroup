@@ -13,11 +13,13 @@ const firebaseConfig = {
   measurementId: "G-JZ53PMDM88"
 }
 
-// Initialize Firebase with auth persistence
-const app = initializeApp(firebaseConfig)
-export const auth = getAuth(app)
+// Initialize Firebase with explicit auth settings
+const app = initializeApp(firebaseConfig, {
+  authDomain: 'gungroup-1a3c8.firebaseapp.com'
+})
 
-// Set persistence to local
+// Get Auth instance with persistence
+export const auth = getAuth(app)
 setPersistence(auth, browserLocalPersistence)
   .catch((error) => {
     console.error('Auth persistence error:', error)
