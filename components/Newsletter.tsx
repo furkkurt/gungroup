@@ -1,3 +1,5 @@
+import Image from 'next/image'
+
 export default function Newsletter() {
   return (
     <div className="max-w-6xl mx-auto">
@@ -22,9 +24,11 @@ export default function Newsletter() {
             </div>
           </div>
           <div className="relative h-[300px] lg:h-[400px]">
-            <img
+            <Image
               src="/newsletterright.png"
               alt="Newsletter"
+              width={500}
+              height={400}
               className="w-full h-full object-contain"
             />
           </div>

@@ -1,10 +1,14 @@
+import Image from 'next/image'
+
 export default function TradeOnGo() {
   return (
     <div className="mt-16 bg-[#111] rounded-3xl p-12">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-        <img
+        <Image
           src="/tradeongo.png"
           alt="Trading Platform"
+          width={600}
+          height={400}
           className="w-full rounded-xl"
         />
         <div>

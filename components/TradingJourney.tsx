@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from 'next/image'
 
 export default function TradingJourney() {
   return (
@@ -12,9 +13,11 @@ export default function TradingJourney() {
 
           {/* Advanced Platforms */}
           <div className="flex items-start gap-4">
-            <img 
-              src="/advance.svg" 
-              alt="Advanced Platforms" 
+            <Image
+              src="/advance.svg"
+              alt="Advanced Platforms"
+              width={32}
+              height={32}
               className="w-8 h-8 mt-1"
             />
             <div>
@@ -29,9 +32,11 @@ export default function TradingJourney() {
 
           {/* Flexibility */}
           <div className="flex items-start gap-4">
-            <img 
-              src="/flex.svg" 
-              alt="Flexibility" 
+            <Image
+              src="/flex.svg"
+              alt="Flexibility"
+              width={32}
+              height={32}
               className="w-8 h-8 mt-1"
             />
             <div>
@@ -46,9 +51,11 @@ export default function TradingJourney() {
 
           {/* Support */}
           <div className="flex items-start gap-4">
-            <img 
-              src="/support.svg" 
-              alt="Support" 
+            <Image
+              src="/support.svg"
+              alt="Support"
+              width={32}
+              height={32}
               className="w-8 h-8 mt-1"
             />
             <div>
@@ -63,9 +70,11 @@ export default function TradingJourney() {
 
           {/* Innovation */}
           <div className="flex items-start gap-4">
-            <img 
-              src="/innovation.svg" 
-              alt="Innovation" 
+            <Image
+              src="/innovation.svg"
+              alt="Innovation"
+              width={32}
+              height={32}
               className="w-8 h-8 mt-1"
             />
             <div>

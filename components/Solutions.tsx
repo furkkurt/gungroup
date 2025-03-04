@@ -1,3 +1,5 @@
+import Image from 'next/image'
+
 export default function Solutions() {
   return (
     <div className="mt-16"> 
@@ -29,9 +31,11 @@ export default function Solutions() {
               across different markets, capitalize on various opportunities, and
               potentially maximize your return as market conditions evolve.
             </p>
-            <img
-              src="/portfolio.webp" 
-              alt="Portfolio Diversification" 
+            <Image
+              src="/portfolio.webp"
+              alt="Portfolio Diversification"
+              width={400}
+              height={300}
               className="w-full rounded-lg"
             />
           </div>
@@ -51,9 +55,11 @@ export default function Solutions() {
                   transfers, and popular e-wallets.
                 </p>
               </div>
-              <img 
-                src="/transaction.webp" 
-                alt="Secure Transactions" 
+              <Image
+                src="/transaction.webp"
+                alt="Secure Transactions"
+                width={32}
+                height={32}
                 className="w-32 h-32 object-contain"
               />
             </div>
@@ -70,9 +76,11 @@ export default function Solutions() {
                   your trading success.
                 </p>
               </div>
-              <img 
-                src="/execution.webp" 
-                alt="Fast Execution" 
+              <Image
+                src="/execution.webp"
+                alt="Fast Execution"
+                width={32}
+                height={32}
                 className="w-32 h-32 object-contain"
               />
             </div>

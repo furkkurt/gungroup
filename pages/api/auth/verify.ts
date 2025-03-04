@@ -56,11 +56,12 @@ export default async function handler(
             })
           }
         } catch (authError) {
+          console.error('Auth error:', authError)
           // If this is a login attempt and user doesn't exist, return error
           if (isLogin) {
             return res.status(400).json({
               error: 'Phone number not found',
-              details: 'Please register first'
+              details: authError instanceof Error ? authError.message : 'Please register first'
             })
           }
           
