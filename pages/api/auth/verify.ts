@@ -126,8 +126,9 @@ export default async function handler(
       console.log('=== Verify Code Process ===')
       console.log('Verifying code for phone:', phoneNumber)
       
-      // Skip verification for login
-      const isValid = isLogin || code === DEV_VERIFICATION_CODE
+      // Get stored verification code
+      const storedData = global.verificationCodes?.get(phoneNumber)
+      const isValid = isLogin || (storedData && storedData.code === code)
       console.log('Code valid:', isValid)
 
       if (!isValid) {
