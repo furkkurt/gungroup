@@ -57,8 +57,8 @@ export async function POST(req: NextRequest) {
         console.error('Login error:', error)
         // Log the exact error for debugging
         console.log('Error details:', {
-          code: error.code,
-          message: error.message,
+          code: error instanceof Error ? (error as any).code : 'unknown',
+          message: error instanceof Error ? error.message : 'Unknown error',
           phoneNumber: formattedPhone
         })
         
