@@ -2,6 +2,10 @@ import type { NextApiRequest, NextApiResponse } from 'next'
 import twilio from 'twilio'
 import { adminAuth } from '@/lib/firebase-admin'
 
+declare global {
+  var verificationCodes: Map<string, { code: string; timestamp: number }>;
+}
+
 const client = twilio(
   process.env.TWILIO_ACCOUNT_SID,
   process.env.TWILIO_AUTH_TOKEN
