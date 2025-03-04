@@ -4,6 +4,8 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import PhoneInput from 'react-phone-input-2'
 import 'react-phone-input-2/lib/style.css'
+import { signInWithCustomToken } from 'firebase/auth'
+import { auth } from '@/lib/firebase'
 
 export default function Register() {
   const [step, setStep] = useState('details') // 'details' or 'verify'
@@ -64,7 +66,11 @@ export default function Register() {
         throw new Error(data.error)
       }
 
-      router.push('/')
+      // Sign in with the custom token
+      if (data.customToken) {
+        await signInWithCustomToken(auth, data.customToken)
+        router.push('/')
+      }
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Failed to verify code')
     } finally {
