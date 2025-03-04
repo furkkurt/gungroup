@@ -12,8 +12,6 @@ import {
   ChartOptions
 } from 'chart.js'
 import { Line } from 'react-chartjs-2'
-import { getForexTimeSeries, TimeSeriesData } from '@/services/forexService'
-import { CURRENCY_PAIRS } from '@/constants/forex'
 
 ChartJS.register(
   CategoryScale,
@@ -31,31 +29,26 @@ interface ForexChartProps {
 }
 
 export default function ForexChart({ fromCurrency, toCurrency }: ForexChartProps) {
-  const [timeSeriesData, setTimeSeriesData] = useState<TimeSeriesData[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
+  const [data, setData] = useState<number[]>([])
+  const [labels, setLabels] = useState<string[]>([])
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const data = await getForexTimeSeries(fromCurrency, toCurrency)
-        setTimeSeriesData(data)
-        setError('')
-      } catch (err) {
-        setError('Failed to fetch chart data')
-        console.error(err)
-      } finally {
-        setLoading(false)
-      }
-    }
+    // Generate mock data
+    const mockData = Array.from({ length: 20 }, (_, i) => {
+      const baseValue = fromCurrency === 'EUR' ? 1.05 : fromCurrency === 'GBP' ? 1.27 : 149.5
+      return baseValue + (Math.random() - 0.5) * 0.01
+    })
+    
+    const timeLabels = Array.from({ length: 20 }, (_, i) => {
+      const date = new Date()
+      date.setMinutes(date.getMinutes() - (20 - i))
+      return date.toLocaleTimeString()
+    })
 
-    fetchData()
-    const interval = setInterval(fetchData, 60000)
-    return () => clearInterval(interval)
+    setData(mockData)
+    setLabels(timeLabels)
   }, [fromCurrency, toCurrency])
 
-  const pair = CURRENCY_PAIRS.find(p => p.from === fromCurrency && p.to === toCurrency)
-  
   const options: ChartOptions<'line'> = {
     responsive: true,
     maintainAspectRatio: false,
@@ -65,7 +58,7 @@ export default function ForexChart({ fromCurrency, toCurrency }: ForexChartProps
       },
       title: {
         display: true,
-        text: `${pair?.name || `${fromCurrency}/${toCurrency}`} Exchange Rate`,
+        text: `${fromCurrency}/${toCurrency} Exchange Rate`,
         color: '#94a3b8'
       }
     },
@@ -83,57 +76,28 @@ export default function ForexChart({ fromCurrency, toCurrency }: ForexChartProps
           color: '#1f2937'
         },
         ticks: {
-          color: '#94a3b8',
-          callback: function(value: number | string) {
-            if (typeof value === 'number') {
-              return value.toFixed(4)
-            }
-            return value
-          }
+          color: '#94a3b8'
         }
       }
     }
   }
 
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center h-[400px]">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-400"></div>
-        <span className="ml-3 text-gray-400">Loading chart...</span>
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="p-4 bg-red-900/50 text-red-400 rounded-lg">
-        Error loading chart: {error}
-      </div>
-    )
-  }
-
   const chartData = {
-    labels: timeSeriesData.map(data => 
-      new Date(data.timestamp).toLocaleTimeString()
-    ),
+    labels,
     datasets: [
       {
         label: `${fromCurrency}/${toCurrency}`,
-        data: timeSeriesData.map(data => data.close),
-        borderColor: 'rgb(59, 130, 246)',
-        backgroundColor: 'rgba(59, 130, 246, 0.5)',
+        data,
+        borderColor: 'rgb(0, 255, 213)',
+        backgroundColor: 'rgba(0, 255, 213, 0.5)',
         tension: 0.1
       }
     ]
   }
 
   return (
-    <div className="h-[400px] w-full">
-      <Line 
-        data={chartData} 
-        options={options}
-        className="bg-gray-800 rounded-lg p-4"
-      />
+    <div className="h-full w-full p-4">
+      <Line data={chartData} options={options} />
     </div>
   )
 } 

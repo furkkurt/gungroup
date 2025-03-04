@@ -7,10 +7,9 @@ const client = twilio(
   process.env.TWILIO_AUTH_TOKEN
 )
 
-const MESSAGING_SERVICE_SID = 'MG123e11ea198ac4584d76846391716aff'
-
-// For development, we'll use a fixed code
-const DEV_VERIFICATION_CODE = '123456'
+const generateVerificationCode = () => {
+  return Math.floor(100000 + Math.random() * 900000).toString()
+}
 
 export default async function handler(
   req: NextApiRequest,
@@ -28,8 +27,8 @@ export default async function handler(
     return res.status(405).json({ error: `Method ${req.method} Not Allowed` });
   }
 
-  const { phoneNumber, action, code, firstName, lastName, email } = req.body;
-  console.log('Processing request:', { action, phoneNumber, firstName, lastName, email });
+  const { phoneNumber, action, code, firstName, lastName, email, isLogin } = req.body;
+  console.log('Processing request:', { action, phoneNumber, firstName, lastName, email, isLogin });
 
   try {
     if (action === 'send') {
@@ -44,36 +43,67 @@ export default async function handler(
       console.log('Formatted phone:', formattedPhone)
 
       try {
-        console.log('Creating/getting Firebase user...')
-        const userRecord = await adminAuth.createUser({
-          phoneNumber: formattedPhone,
-          disabled: false
-        }).catch(async (error) => {
-          console.log('User creation failed, attempting to get existing user:', error)
-          if (error.code === 'auth/phone-number-already-exists') {
-            return await adminAuth.getUserByPhoneNumber(formattedPhone)
+        // Check if user exists
+        let userRecord
+        try {
+          userRecord = await adminAuth.getUserByPhoneNumber(formattedPhone)
+          
+          // If this is a registration attempt and user exists, return error
+          if (!isLogin) {
+            return res.status(400).json({
+              error: 'Phone number already registered',
+              details: 'Please login instead'
+            })
           }
-          throw error
-        })
+        } catch (error) {
+          // If this is a login attempt and user doesn't exist, return error
+          if (isLogin) {
+            return res.status(400).json({
+              error: 'Phone number not found',
+              details: 'Please register first'
+            })
+          }
+          
+          // For registration, create new user
+          userRecord = await adminAuth.createUser({
+            phoneNumber: formattedPhone,
+            disabled: false
+          })
+        }
+
         console.log('User record:', userRecord)
 
+        // Create custom token
         console.log('Creating custom token...')
         const customToken = await adminAuth.createCustomToken(userRecord.uid)
         console.log('Custom token created')
 
-        console.log('Sending SMS...')
-        const message = await client.messages.create({
-          messagingServiceSid: MESSAGING_SERVICE_SID,
-          to: formattedPhone,
-          body: `Your verification code is: ${DEV_VERIFICATION_CODE}`
-        })
-        console.log('SMS sent:', message.sid)
+        // Only send SMS for registration
+        if (!isLogin) {
+          console.log('Sending SMS...')
+          const verificationCode = generateVerificationCode()
+          
+          // Store the code in a secure way (you might want to use Redis or similar)
+          // For now, we'll store it in memory (not recommended for production)
+          global.verificationCodes = global.verificationCodes || new Map()
+          global.verificationCodes.set(formattedPhone, {
+            code: verificationCode,
+            timestamp: Date.now()
+          })
+
+          await client.messages.create({
+            body: `Your verification code is: ${verificationCode}`,
+            to: formattedPhone,
+            from: process.env.TWILIO_PHONE_NUMBER
+          })
+        }
 
         return res.status(200).json({ 
           status: 'pending', 
-          messageSid: message.sid,
+          messageSid: isLogin ? 'LOGIN_MODE' : 'SMS_SENT',
           customToken,
-          uid: userRecord.uid
+          uid: userRecord.uid,
+          skipVerification: isLogin // Add this flag
         })
 
       } catch (error: unknown) {
@@ -91,7 +121,8 @@ export default async function handler(
       console.log('=== Verify Code Process ===')
       console.log('Verifying code for phone:', phoneNumber)
       
-      const isValid = code === DEV_VERIFICATION_CODE
+      // Skip verification for login
+      const isValid = isLogin || code === DEV_VERIFICATION_CODE
       console.log('Code valid:', isValid)
 
       if (!isValid) {
@@ -110,6 +141,9 @@ export default async function handler(
         console.log('Creating custom token...')
         const customToken = await adminAuth.createCustomToken(userRecord.uid)
         console.log('Custom token created')
+
+        // Clean up
+        global.verificationCodes.delete(phoneNumber)
 
         return res.status(200).json({ 
           valid: true,
