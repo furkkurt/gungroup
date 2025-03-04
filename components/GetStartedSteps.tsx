@@ -1,3 +1,5 @@
+import Image from 'next/image'
+
 export default function GetStartedSteps() {
   return (
     <div className="max-w-6xl mx-auto">
@@ -8,10 +10,12 @@ export default function GetStartedSteps() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Create Account */}
           <div className="bg-[#111] rounded-3xl p-8 text-center transform hover:scale-105 transition-all hover:bg-[#161616]">
-            <img
+            <Image
               src="/createacc.png"
               alt="Create Account"
-              className="w-20 h-20 md:w-24 md:h-24 mx-auto mb-6 transform hover:rotate-6 transition-transform"
+              width={96}
+              height={96}
+              className="mx-auto mb-6"
             />
             <h3 className="text-xl font-bold text-white mb-3">Create Account</h3>
             <p className="text-gray-400 text-sm">
@@ -20,10 +24,12 @@ export default function GetStartedSteps() {
           </div>
 
           <div className="bg-[#111] rounded-3xl p-8 text-center transform hover:scale-105 transition-all hover:bg-[#161616]">
-            <img
+            <Image
               src="/fundacc.png"
               alt="Fund Account"
-              className="w-20 h-20 md:w-24 md:h-24 mx-auto mb-6 transform hover:rotate-6 transition-transform"
+              width={96}
+              height={96}
+              className="mx-auto mb-6"
             />
             <h3 className="text-xl font-bold text-white mb-3">Fund Account</h3>
             <p className="text-gray-400 text-sm">
@@ -32,10 +38,12 @@ export default function GetStartedSteps() {
           </div>
 
           <div className="bg-[#111] rounded-3xl p-8 text-center transform hover:scale-105 transition-all hover:bg-[#161616]">
-            <img
+            <Image
               src="/tradingacc.png"
               alt="Start Trading"
-              className="w-20 h-20 md:w-24 md:h-24 mx-auto mb-6 transform hover:rotate-6 transition-transform"
+              width={96}
+              height={96}
+              className="mx-auto mb-6"
             />
             <h3 className="text-xl font-bold text-white mb-3">Start Trading</h3>
             <p className="text-gray-400 text-sm">

@@ -55,7 +55,7 @@ export default async function handler(
               details: 'Please login instead'
             })
           }
-        } catch (error) {
+        } catch (authError) {
           // If this is a login attempt and user doesn't exist, return error
           if (isLogin) {
             return res.status(400).json({

@@ -52,7 +52,11 @@ export default function Header() {
               <div key={item.name} className="relative group">
                 <Link
                   href={item.href}
-                  className="text-gray-300 hover:text-[#00ffd5] px-3 py-2 text-sm font-medium transition-colors"
+                  className={`${
+                    pathname === '/' 
+                      ? 'border-[#00ffd5] text-white'
+                      : 'border-transparent text-gray-300 hover:text-[#00ffd5]'
+                  } px-3 py-2 text-sm font-medium transition-colors`}
                 >
                   {item.name}
                 </Link>

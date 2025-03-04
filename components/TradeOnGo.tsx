@@ -12,7 +12,7 @@ export default function TradeOnGo() {
             Trade on the go
           </h2>
           <p className="text-gray-400 mb-8">
-            An outstanding global trading platform and the world's leading CFD
+            An outstanding global trading platform and the world&apos;s leading CFD
             and spread betting provider. Trade on MT4, MT5 or cTrader with CPT
             Markets.
           </p>

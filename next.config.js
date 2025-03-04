@@ -1,5 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  images: {
+    domains: ['your-image-domain.com'], // Add your image domains here
+  },
+  eslint: {
+    ignoreDuringBuilds: false, // Set to true if you want to deploy despite warnings
+  },
   async headers() {
     return [
       {
