@@ -1,9 +1,40 @@
 'use client'
 import { useState } from 'react'
 
+interface ForexPair {
+  symbol: string
+  subText: string
+  flag1: string
+  flag2: string
+  bid: string
+  ask: string
+  spread: string
+}
+
+const FOREX_DATA: ForexPair[] = [
+  {
+    symbol: 'EURJPY',
+    subText: 'EURJPY',
+    flag1: '🇪🇺',
+    flag2: '🇯🇵',
+    bid: '156.823',
+    ask: '156.847',
+    spread: '3'
+  },
+  {
+    symbol: 'EURUSD',
+    subText: 'EURUSD',
+    flag1: '🇪🇺',
+    flag2: '🇺🇸',
+    bid: '1.04902',
+    ask: '1.04919',
+    spread: '2.1'
+  }
+  // Add other pairs as needed
+]
+
 export default function ForexDashboard() {
-  const [isChartVisible] = useState(true)
-  const [selectedPair] = useState('EURUSD')
+  const [selectedPair, setSelectedPair] = useState('EURUSD')
 
   return (
     <div className="w-full bg-black p-4">
