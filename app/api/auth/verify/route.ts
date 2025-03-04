@@ -18,36 +18,54 @@ const generateVerificationCode = () => {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const { phoneNumber, action, code, firstName, lastName, email, isLogin } = body
+    const { phoneNumber, action, code, firstName, lastName, email, uid } = body
 
     console.log('=== API Request ===')
     console.log('Action:', action)
-    console.log('Environment check:', {
-      hasTwilioSid: !!process.env.TWILIO_ACCOUNT_SID,
-      hasTwilioToken: !!process.env.TWILIO_AUTH_TOKEN,
-      hasTwilioPhone: !!process.env.TWILIO_PHONE_NUMBER,
-    })
+    console.log('Phone:', phoneNumber)
+    console.log('Code:', code)
+    console.log('IsLogin:', !!uid)
+    console.log('Firebase Admin Status:', !!adminAuth)
 
     // Handle direct login
     if (action === 'login') {
-      let formattedPhone = phoneNumber.replace(/\s+/g, '').replace(/[()-]/g, '')
+      // Format phone number exactly as stored in Firebase
+      let formattedPhone = phoneNumber.replace(/\s+/g, '')
+        .replace(/[()-]/g, '')
+        .replace(/^00/, '+') // Replace leading 00 with +
+      
       if (!formattedPhone.startsWith('+')) {
         formattedPhone = `+${formattedPhone}`
       }
 
+      console.log('Attempting login with phone:', formattedPhone)
+
       try {
         const userRecord = await adminAuth.getUserByPhoneNumber(formattedPhone)
+        console.log('Found user:', userRecord)
+        
         const customToken = await adminAuth.createCustomToken(userRecord.uid)
+        console.log('Generated token for:', userRecord.uid)
         
         return NextResponse.json({
           status: 'success',
           customToken,
           uid: userRecord.uid
         })
+
       } catch (error) {
+        console.error('Login error:', error)
+        // Log the exact error for debugging
+        console.log('Error details:', {
+          code: error.code,
+          message: error.message,
+          phoneNumber: formattedPhone
+        })
+        
         return NextResponse.json({
           error: 'User not found',
-          details: 'Please register first'
+          details: 'Please register first',
+          debug: formattedPhone // This will help us see what number we're trying
         }, { status: 400 })
       }
     }
@@ -70,24 +88,16 @@ export async function POST(req: NextRequest) {
         })
 
         // Send SMS
-        const message = await client.messages.create({
+        await client.messages.create({
           body: `Your GunGroup verification code is: ${verificationCode}`,
           to: formattedPhone,
           from: process.env.TWILIO_PHONE_NUMBER
         })
 
-        console.log('SMS sent successfully:', message.sid)
-
-        return NextResponse.json({ 
-          status: 'success',
-          message: 'Verification code sent'
-        })
+        return NextResponse.json({ status: 'success' })
       } catch (error) {
-        console.error('Twilio Error:', error)
-        return NextResponse.json({
-          error: 'Failed to send verification code',
-          details: error instanceof Error ? error.message : 'Unknown error'
-        }, { status: 400 })
+        console.error('Send code error:', error)
+        return NextResponse.json({ error: 'Failed to send verification code' }, { status: 500 })
       }
     }
 
@@ -98,54 +108,39 @@ export async function POST(req: NextRequest) {
       }
       
       const storedData = global.verificationCodes?.get(formattedPhone)
-      const isValid = isLogin || (storedData && storedData.code === code)
-
-      if (!isValid) {
+      
+      if (!storedData || storedData.code !== code) {
         return NextResponse.json({ 
-          valid: false,
-          status: 'failed',
           error: 'Invalid verification code'
-        })
+        }, { status: 400 })
       }
 
       try {
-        let userRecord;
-        try {
-          userRecord = await adminAuth.getUserByPhoneNumber(formattedPhone)
-        } catch (error) {
-          userRecord = await adminAuth.createUser({
-            phoneNumber: formattedPhone,
-            displayName: `${firstName} ${lastName}`,
-            email: email,
-            disabled: false
-          })
-        }
+        // Update the user's phone number in Firebase
+        await adminAuth.updateUser(uid, {
+          phoneNumber: formattedPhone,
+        })
 
-        const customToken = await adminAuth.createCustomToken(userRecord.uid)
+        // Generate a custom token
+        const customToken = await adminAuth.createCustomToken(uid)
+        
+        // Clean up the verification code
         global.verificationCodes.delete(formattedPhone)
 
         return NextResponse.json({ 
-          valid: true,
-          status: 'approved',
-          uid: userRecord.uid,
+          status: 'success',
           customToken
         })
       } catch (error) {
-        console.error('Verification Error:', error)
-        return NextResponse.json({
-          error: 'Failed to verify user',
-          details: error instanceof Error ? error.message : 'Unknown error'
-        }, { status: 500 })
+        console.error('Verification error:', error)
+        return NextResponse.json({ error: 'Failed to verify user' }, { status: 500 })
       }
     }
 
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
 
   } catch (error) {
-    console.error('Handler Error:', error)
-    return NextResponse.json({
-      error: 'Internal server error',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 })
+    console.error('Handler error:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 } 

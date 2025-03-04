@@ -1,18 +1,23 @@
 'use client'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { auth } from '@/lib/firebase'
 import { signOut } from 'firebase/auth'
 
 export default function Header() {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [userName, setUserName] = useState('')
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const pathname = usePathname()
+  const router = useRouter()
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
       setIsLoggedIn(!!user)
+      if (user?.displayName) {
+        setUserName(user.displayName)
+      }
     })
     return () => unsubscribe()
   }, [])
@@ -27,12 +32,18 @@ export default function Header() {
     }
   }
 
+  const handleAccountClick = () => {
+    if (!isLoggedIn) {
+      router.push('/register')
+    }
+  }
+
   const navItems = [
-    { name: 'Markets', href: '/markets', items: ['Forex', 'Stocks', 'Indices', 'Commodities', 'Crypto'] },
-    { name: 'Account', href: '/account', items: ['Live Account', 'Demo Account', 'Account Types'] },
-    { name: 'Learn to Trade', href: '/learn', items: ['Trading Guides', 'Market Analysis', 'Trading Tools'] },
-    { name: 'Partners', href: '/partners', items: ['Affiliate Program', 'IB Program', 'White Label'] },
-    { name: 'About', href: '/about', items: ['Company', 'Regulation', 'Contact Us'] },
+    { name: 'Markets', href: '/markets' },
+    { name: 'Account', href: '/account', onClick: handleAccountClick },
+    { name: 'Learn to Trade', href: '/learn' },
+    { name: 'Partners', href: '/partners' },
+    { name: 'About', href: '/about' },
   ]
 
   return (
@@ -49,31 +60,17 @@ export default function Header() {
           {/* Main Navigation */}
           <div className="hidden lg:flex items-center space-x-8">
             {navItems.map((item) => (
-              <div key={item.name} className="relative group">
+              <div key={item.name}>
                 <Link
-                  href={item.href}
+                  href={isLoggedIn ? item.href : (item.name === 'Account' ? '/register' : item.href)}
                   className={`${
-                    pathname === '/' 
-                      ? 'border-[#00ffd5] text-white'
-                      : 'border-transparent text-gray-300 hover:text-[#00ffd5]'
+                    pathname === item.href 
+                      ? 'text-[#00ffd5]'
+                      : 'text-gray-300 hover:text-[#00ffd5]'
                   } px-3 py-2 text-sm font-medium transition-colors`}
                 >
                   {item.name}
                 </Link>
-                {/* Dropdown */}
-                <div className="absolute left-0 mt-2 w-48 rounded-md shadow-lg bg-[#111] ring-1 ring-black ring-opacity-5 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
-                  <div className="py-1">
-                    {item.items.map((subItem) => (
-                      <Link
-                        key={subItem}
-                        href="#"
-                        className="block px-4 py-2 text-sm text-gray-300 hover:bg-[#00ffd5] hover:text-black transition-colors"
-                      >
-                        {subItem}
-                      </Link>
-                    ))}
-                  </div>
-                </div>
               </div>
             ))}
           </div>
@@ -81,12 +78,15 @@ export default function Header() {
           {/* Auth Buttons */}
           <div className="hidden lg:flex items-center space-x-4">
             {isLoggedIn ? (
-              <button
-                onClick={handleSignOut}
-                className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-full transition-all transform hover:scale-105"
-              >
-                Sign Out
-              </button>
+              <div className="flex items-center space-x-4">
+                <span className="text-gray-300">Welcome, {userName}</span>
+                <button
+                  onClick={handleSignOut}
+                  className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-full transition-all transform hover:scale-105"
+                >
+                  Sign Out
+                </button>
+              </div>
             ) : (
               <>
                 <Link
@@ -130,23 +130,13 @@ export default function Header() {
       <div className={`${isMenuOpen ? 'block' : 'hidden'} lg:hidden bg-[#111]`}>
         <div className="px-2 pt-2 pb-3 space-y-1">
           {navItems.map((item) => (
-            <div key={item.name}>
-              <Link
-                href={item.href}
-                className="block px-3 py-2 text-base font-medium text-gray-300 hover:text-[#00ffd5]"
-              >
-                {item.name}
-              </Link>
-              {item.items.map((subItem) => (
-                <Link
-                  key={subItem}
-                  href="#"
-                  className="block px-6 py-2 text-sm text-gray-400 hover:text-[#00ffd5]"
-                >
-                  {subItem}
-                </Link>
-              ))}
-            </div>
+            <Link
+              key={item.name}
+              href={isLoggedIn ? item.href : (item.name === 'Account' ? '/register' : item.href)}
+              className="block px-3 py-2 text-base font-medium text-gray-300 hover:text-[#00ffd5]"
+            >
+              {item.name}
+            </Link>
           ))}
           {/* Mobile Auth Buttons */}
           <div className="pt-4 pb-3 border-t border-gray-700">

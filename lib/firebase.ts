@@ -17,7 +17,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig)
 
 // Get Auth instance with persistence
-export const auth = getAuth()
+const auth = getAuth(app)
 
 // Configure auth settings
 if (process.env.NODE_ENV !== 'production') {
@@ -37,4 +37,4 @@ const storage = getStorage(app)
 // Enable cross-origin isolation
 auth.useDeviceLanguage()
 
-export { db, storage } 
+export { auth, db, storage } 
