@@ -56,7 +56,7 @@ export default function Register() {
 
       setStep(2)
     } catch (error) {
-      setError(error.message)
+      setError(error instanceof Error ? error.message : 'An error occurred')
     } finally {
       setIsLoading(false)
     }
@@ -89,7 +89,7 @@ export default function Register() {
         router.push('/')
       }
     } catch (error) {
-      setError(error.message)
+      setError(error instanceof Error ? error.message : 'An error occurred')
     } finally {
       setIsLoading(false)
     }
