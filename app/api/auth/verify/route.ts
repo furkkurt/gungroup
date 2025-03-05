@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import twilio from 'twilio'
 import { adminAuth } from '@/lib/firebase-admin'
+import { getFirestore } from 'firebase-admin/firestore'
 
 declare global {
   var verificationCodes: Map<string, { code: string; timestamp: number }>;
@@ -10,6 +11,8 @@ const client = twilio(
   process.env.TWILIO_ACCOUNT_SID,
   process.env.TWILIO_AUTH_TOKEN
 )
+
+const db = getFirestore()
 
 const generateVerificationCode = () => {
   return Math.floor(100000 + Math.random() * 900000).toString()
@@ -116,9 +119,15 @@ export async function POST(req: NextRequest) {
       }
 
       try {
-        // Update the user's phone number in Firebase
+        // Update the user's phone number in Firebase Auth
         await adminAuth.updateUser(uid, {
           phoneNumber: formattedPhone,
+        })
+
+        // Create verification document
+        await db.collection('verification').doc(uid).set({
+          verified: false,
+          uid: uid
         })
 
         // Generate a custom token

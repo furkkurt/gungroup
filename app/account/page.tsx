@@ -30,8 +30,10 @@ export default function Account() {
     return () => unsubscribe()
   }, [])
 
-  // Split display name into first and last name
-  const [firstName, lastName] = userInfo.displayName?.split(' ') || ['', '']
+  // Update the name splitting logic
+  const nameParts = userInfo.displayName?.split(' ') || ['', '', '']
+  const firstName = nameParts.slice(0, -1).join(' ') // Join all parts except the last one
+  const lastName = nameParts[nameParts.length - 1] // Take the last part as surname
 
   return (
     <main className="min-h-screen bg-black">

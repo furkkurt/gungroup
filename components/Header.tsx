@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { auth } from '@/lib/firebase'
 import { signOut } from 'firebase/auth'
+import { useVerificationStatus } from '@/hooks/useVerificationStatus'
 
 export default function Header() {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
@@ -11,6 +12,7 @@ export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const pathname = usePathname()
   const router = useRouter()
+  const { isVerified } = useVerificationStatus()
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
@@ -166,6 +168,12 @@ export default function Header() {
           </div>
         </div>
       </div>
+
+      {isVerified && (
+        <div className="bg-green-500/10 px-4 py-2">
+          <p className="text-green-500 text-sm">Account Verified</p>
+        </div>
+      )}
     </nav>
   )
 } 

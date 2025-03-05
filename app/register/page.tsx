@@ -117,7 +117,7 @@ export default function Register() {
                     id="firstName"
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
-                    className="mt-1 block w-full bg-[#222] border-gray-700 rounded-lg shadow-sm focus:ring-[#00ffd5] focus:border-[#00ffd5]"
+                    className="mt-1 block w-full bg-[#222] border-gray-700 rounded-lg shadow-sm focus:ring-[#00ffd5] focus:border-[#00ffd5] text-white"
                     required
                   />
                 </div>
@@ -130,7 +130,7 @@ export default function Register() {
                     id="lastName"
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
-                    className="mt-1 block w-full bg-[#222] border-gray-700 rounded-lg shadow-sm focus:ring-[#00ffd5] focus:border-[#00ffd5]"
+                    className="mt-1 block w-full bg-[#222] border-gray-700 rounded-lg shadow-sm focus:ring-[#00ffd5] focus:border-[#00ffd5] text-white"
                     required
                   />
                 </div>
@@ -145,7 +145,7 @@ export default function Register() {
                   id="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="mt-1 block w-full bg-[#222] border-gray-700 rounded-lg shadow-sm focus:ring-[#00ffd5] focus:border-[#00ffd5]"
+                  className="mt-1 block w-full bg-[#222] border-gray-700 rounded-lg shadow-sm focus:ring-[#00ffd5] focus:border-[#00ffd5] text-white"
                   required
                 />
               </div>
@@ -173,7 +173,7 @@ export default function Register() {
                   country={'tr'}
                   value={phoneNumber}
                   onChange={setPhoneNumber}
-                  inputClass="!w-full !bg-[#222] !text-white !border-gray-700"
+                  inputClass="!w-full !bg-[#222] !text-white !border-gray-700 text-white"
                   buttonClass="!bg-[#222] !border-gray-700"
                   dropdownClass="!bg-[#222] !text-white"
                 />
