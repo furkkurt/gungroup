@@ -11,8 +11,7 @@ import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth'
 export default function Register() {
   const [step, setStep] = useState(1)
   const [phoneNumber, setPhoneNumber] = useState('')
-  const [firstName, setFirstName] = useState('')
-  const [lastName, setLastName] = useState('')
+  const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [verificationCode, setVerificationCode] = useState('')
@@ -26,13 +25,12 @@ export default function Register() {
     setIsLoading(true)
 
     try {
-      // First create the user with email/password
       const userCredential = await createUserWithEmailAndPassword(auth, email, password)
       const user = userCredential.user
 
-      // Update profile with display name
+      // Update profile with full name
       await updateProfile(user, {
-        displayName: `${firstName} ${lastName}`
+        displayName: fullName
       })
 
       // Send verification code
@@ -42,8 +40,7 @@ export default function Register() {
         body: JSON.stringify({
           action: 'send',
           phoneNumber,
-          firstName,
-          lastName,
+          fullName,
           email,
           uid: user.uid
         })
@@ -107,33 +104,18 @@ export default function Register() {
         <div className="bg-[#111] py-8 px-4 shadow-xl rounded-2xl sm:px-10">
           {step === 1 ? (
             <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label htmlFor="firstName" className="block text-sm font-medium text-gray-300">
-                    First Name
-                  </label>
-                  <input
-                    type="text"
-                    id="firstName"
-                    value={firstName}
-                    onChange={(e) => setFirstName(e.target.value)}
-                    className="mt-1 block w-full bg-[#222] border-gray-700 rounded-lg shadow-sm focus:ring-[#00ffd5] focus:border-[#00ffd5] text-white"
-                    required
-                  />
-                </div>
-                <div>
-                  <label htmlFor="lastName" className="block text-sm font-medium text-gray-300">
-                    Last Name
-                  </label>
-                  <input
-                    type="text"
-                    id="lastName"
-                    value={lastName}
-                    onChange={(e) => setLastName(e.target.value)}
-                    className="mt-1 block w-full bg-[#222] border-gray-700 rounded-lg shadow-sm focus:ring-[#00ffd5] focus:border-[#00ffd5] text-white"
-                    required
-                  />
-                </div>
+              <div>
+                <label htmlFor="fullName" className="block text-sm font-medium text-gray-300">
+                  Personal Name / Company Name
+                </label>
+                <input
+                  type="text"
+                  id="fullName"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  className="mt-1 block w-full bg-[#222] border-gray-700 rounded-lg shadow-sm focus:ring-[#00ffd5] focus:border-[#00ffd5] text-white"
+                  required
+                />
               </div>
 
               <div>

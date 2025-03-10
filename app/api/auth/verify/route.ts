@@ -18,6 +18,21 @@ const generateVerificationCode = () => {
   return Math.floor(100000 + Math.random() * 900000).toString()
 }
 
+// Add a counter for user IDs
+const getNextUserId = async () => {
+  const counterDoc = await db.collection('counters').doc('users').get()
+  if (!counterDoc.exists) {
+    await db.collection('counters').doc('users').set({ count: 1 })
+    return 1
+  }
+  
+  const batch = db.batch()
+  const newCount = counterDoc.data()!.count + 1
+  batch.update(db.collection('counters').doc('users'), { count: newCount })
+  await batch.commit()
+  return newCount
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
@@ -119,15 +134,26 @@ export async function POST(req: NextRequest) {
       }
 
       try {
+        // Get next user ID
+        const userId = await getNextUserId()
+
         // Update the user's phone number in Firebase Auth
         await adminAuth.updateUser(uid, {
           phoneNumber: formattedPhone,
         })
 
-        // Create verification document
+        // Create verification document with additional fields
         await db.collection('verification').doc(uid).set({
           verified: false,
-          uid: uid
+          uid: uid,
+          registrationDate: new Date().toISOString(),
+          userId: userId,
+          products: "consulting",
+          securityLevel: "password",
+          documents: "N/A",
+          accountAgent: "N/A",
+          dateOfBirth: "N/A",
+          nationality: "N/A"
         })
 
         // Generate a custom token
