@@ -1,20 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getFirestore } from 'firebase-admin/firestore'
-
-const db = getFirestore()
+import { adminDb } from '@/lib/firebase-admin'
 
 export async function POST(req: NextRequest) {
   try {
     const { userId } = await req.json()
 
-    // Update verification status
-    await db.collection('verification').doc(userId).update({
-      verified: true
+    if (!userId) {
+      return NextResponse.json({ error: 'Missing user ID' }, { status: 400 })
+    }
+
+    const userRef = adminDb.collection('verification').doc(userId)
+    await userRef.update({
+      verified: true,
+      verifiedAt: new Date().toISOString()
     })
 
-    return NextResponse.json({ status: 'success' })
+    return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Admin verification error:', error)
-    return NextResponse.json({ error: 'Failed to verify user' }, { status: 500 })
+    console.error('Error verifying user:', error)
+    return NextResponse.json({ 
+      error: 'Failed to verify user',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 })
   }
 } 
