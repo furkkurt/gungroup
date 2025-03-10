@@ -84,33 +84,59 @@ export default function AdminPanel() {
   }
 
   const handleEdit = (userId: string) => {
+    const userToEdit = users.find(user => user.id === userId)
+    if (!userToEdit) return
+
+    setEditingUser({
+      accountAgent: userToEdit.accountAgent || '',
+      dateOfBirth: userToEdit.dateOfBirth || '',
+      nationality: userToEdit.nationality || '',
+      documents: userToEdit.documents || ''
+    })
+
     setUsers(users.map(user => ({
       ...user,
-      editing: user.id === userId ? true : false
+      editing: user.id === userId
     })))
   }
 
   const handleSave = async (userId: string) => {
     try {
+      // Find the current user being edited
+      const currentUser = users.find(u => u.id === userId)
+      if (!currentUser) return
+
+      // Only include fields that have been changed
+      const updates: Partial<User> = {}
+      if (editingUser.accountAgent !== undefined) updates.accountAgent = editingUser.accountAgent
+      if (editingUser.dateOfBirth !== undefined) updates.dateOfBirth = editingUser.dateOfBirth
+      if (editingUser.nationality !== undefined) updates.nationality = editingUser.nationality
+      if (editingUser.documents !== undefined) updates.documents = editingUser.documents
+
       const response = await fetch('/api/admin/update-user', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           userId,
-          updates: editingUser
+          updates
         })
       })
 
-      if (!response.ok) throw new Error('Failed to update user')
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.message || 'Failed to update user')
+      }
       
+      // Update local state
       setUsers(users.map(user => ({
         ...user,
-        ...(user.id === userId ? editingUser : {}),
+        ...(user.id === userId ? updates : {}),
         editing: false
       })))
       setEditingUser({})
     } catch (error) {
       console.error('Error updating user:', error)
+      // You might want to show an error message to the user here
     }
   }
 

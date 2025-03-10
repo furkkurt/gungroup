@@ -41,12 +41,12 @@ export default function Login() {
             <label htmlFor="email" className="block text-sm font-medium text-gray-300">
               Email
             </label>
-            <input
+            <input 
               type="email"
               id="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="mt-1 block w-full bg-[#222] border-gray-700 rounded-lg shadow-sm focus:ring-[#00ffd5] focus:border-[#00ffd5]"
+              className="mt-1 block w-full bg-[#222] border-gray-700 rounded-lg shadow-sm focus:ring-[#00ffd5] focus:border-[#00ffd5] text-white"
               required
             />
           </div>
