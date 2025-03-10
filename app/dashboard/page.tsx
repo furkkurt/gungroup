@@ -1,12 +1,10 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useState, useEffect } from 'react'
 import { auth } from '@/lib/firebase'
 import { getFirestore, doc, onSnapshot } from 'firebase/firestore'
-import Header from './Header'
-import Footer from './Footer'
+import Header from '@/components/Header'
+import Footer from '@/components/Footer'
 import Link from 'next/link'
-import ForexChart from './ForexChart'
-import ForexDashboard from './ForexDashboard'
 
 const db = getFirestore()
 
@@ -24,14 +22,13 @@ interface UserDetails {
   nationality: string
 }
 
-export default function Dashboard() {
+function Dashboard() {
   const [userDetails, setUserDetails] = useState<UserDetails | null>(null)
-  const [activeTab, setActiveTab] = useState('dashboard')
+  const [activeTab] = useState('dashboard')
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
       if (user) {
-        // Listen to the verification document for additional details
         const verificationDoc = doc(db, 'verification', user.uid)
         const unsubscribeDoc = onSnapshot(verificationDoc, (doc) => {
           if (doc.exists()) {
@@ -66,7 +63,6 @@ export default function Dashboard() {
       <div className="max-w-6xl mx-auto px-4 mt-8">
         <div className="flex space-x-4">
           <button
-            onClick={() => setActiveTab('dashboard')}
             className={`px-6 py-2 rounded-full text-sm font-medium transition-all ${
               activeTab === 'dashboard'
                 ? 'bg-[#00ffd5] text-black'
@@ -85,22 +81,12 @@ export default function Dashboard() {
       </div>
 
       <div className="max-w-6xl mx-auto px-4 py-12">
-        <div className="bg-[#111] rounded-3xl p-8 md:p-12">
-          <h1 className="text-4xl font-bold text-white mb-8">Account Details</h1>
-          
+        <div className="bg-[#1E1E1E] rounded-3xl p-8 md:p-12">
           {userDetails && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               <div>
-                <p className="text-gray-400">Account Number</p>
-                <p className="text-white text-lg">#{userDetails.userId}</p>
-              </div>
-              <div>
-                <p className="text-gray-400">Account Status</p>
-                <p className="text-white text-lg">BASIC</p>
-              </div>
-              <div>
-                <p className="text-gray-400">Personal Name / Company Name</p>
-                <p className="text-white text-lg">{userDetails.displayName}</p>
+                <p className="text-gray-400">User ID</p>
+                <p className="text-white text-lg">{userDetails.userId}</p>
               </div>
               <div>
                 <p className="text-gray-400">Account Agent</p>
@@ -170,9 +156,11 @@ export default function Dashboard() {
             </button>
           </div>
         </div>
-
       </div>
+
       <Footer />
     </main>
   )
-} 
+}
+
+export default Dashboard 

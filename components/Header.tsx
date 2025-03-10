@@ -41,11 +41,11 @@ export default function Header() {
   }
 
   const navItems = [
-    { name: 'Markets', href: '/markets' },
-    { name: 'Account', href: '/account', onClick: handleAccountClick },
-    { name: 'Learn to Trade', href: '/learn' },
-    { name: 'Partners', href: '/partners' },
-    { name: 'About', href: '/about' },
+    { name: '', href: '/markets' },
+    { name: '', href: '/account', onClick: handleAccountClick },
+    { name: '', href: '/learn' },
+    { name: '', href: '/partners' },
+    { name: '', href: '/about' },
   ]
 
   return (
