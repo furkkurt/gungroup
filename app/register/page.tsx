@@ -15,16 +15,79 @@ export default function Register() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [verificationCode, setVerificationCode] = useState('')
-  const [error, setError] = useState('')
+  const [errors, setErrors] = useState<{
+    email?: string
+    phoneNumber?: string
+    password?: string
+    fullName?: string
+    general?: string
+  }>({})
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
 
+  const validateForm = () => {
+    const newErrors: typeof errors = {}
+
+    // Validate full name
+    if (!fullName.trim()) {
+      newErrors.fullName = 'Full name is required'
+    } else if (fullName.trim().length < 3) {
+      newErrors.fullName = 'Full name must be at least 3 characters'
+    }
+
+    // Validate email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!email) {
+      newErrors.email = 'Email is required'
+    } else if (!emailRegex.test(email)) {
+      newErrors.email = 'Invalid email format'
+    }
+
+    // Validate password
+    if (!password) {
+      newErrors.password = 'Password is required'
+    } else if (password.length < 6) {
+      newErrors.password = 'Password must be at least 6 characters'
+    }
+
+    // Validate phone number
+    if (!phoneNumber) {
+      newErrors.phoneNumber = 'Phone number is required'
+    } else if (phoneNumber.length < 10) {
+      newErrors.phoneNumber = 'Invalid phone number'
+    }
+
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError('')
+    setErrors({})
+    
+    if (!validateForm()) {
+      return
+    }
+
     setIsLoading(true)
 
     try {
+      // First validate email and phone
+      const validationResponse = await fetch('/api/auth/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, phoneNumber })
+      })
+
+      const validationData = await validationResponse.json()
+
+      if (!validationResponse.ok) {
+        setErrors(validationData.errors)
+        setIsLoading(false)
+        return
+      }
+
+      // If validation passes, create user
       const userCredential = await createUserWithEmailAndPassword(auth, email, password)
       const user = userCredential.user
 
@@ -53,7 +116,10 @@ export default function Register() {
 
       setStep(2)
     } catch (error) {
-      setError(error instanceof Error ? error.message : 'An error occurred')
+      console.error('Registration error:', error)
+      setErrors({
+        general: error instanceof Error ? error.message : 'Registration failed'
+      })
     } finally {
       setIsLoading(false)
     }
@@ -61,7 +127,7 @@ export default function Register() {
 
   const handleVerifyCode = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError('')
+    setErrors({})
     setIsLoading(true)
 
     try {
@@ -86,7 +152,9 @@ export default function Register() {
         router.push('/')
       }
     } catch (error) {
-      setError(error instanceof Error ? error.message : 'An error occurred')
+      setErrors({
+        general: error instanceof Error ? error.message : 'Verification failed'
+      })
     } finally {
       setIsLoading(false)
     }
@@ -116,6 +184,9 @@ export default function Register() {
                   className="mt-1 block w-full bg-[#222] border-gray-700 rounded-lg shadow-sm focus:ring-[#00ffd5] focus:border-[#00ffd5] text-white"
                   required
                 />
+                {errors.fullName && (
+                  <p className="text-red-500 text-sm mt-1">{errors.fullName}</p>
+                )}
               </div>
 
               <div>
@@ -130,6 +201,9 @@ export default function Register() {
                   className="mt-1 block w-full bg-[#222] border-gray-700 rounded-lg shadow-sm focus:ring-[#00ffd5] focus:border-[#00ffd5] text-white"
                   required
                 />
+                {errors.email && (
+                  <p className="text-red-500 text-sm mt-1">{errors.email}</p>
+                )}
               </div>
 
               <div>
@@ -145,6 +219,9 @@ export default function Register() {
                   required
                   minLength={6}
                 />
+                {errors.password && (
+                  <p className="text-red-500 text-sm mt-1">{errors.password}</p>
+                )}
               </div>
 
               <div>
@@ -159,11 +236,14 @@ export default function Register() {
                   buttonClass="!bg-[#222] !border-gray-700"
                   dropdownClass="!bg-[#222] !text-white"
                 />
+                {errors.phoneNumber && (
+                  <p className="text-red-500 text-sm mt-1">{errors.phoneNumber}</p>
+                )}
               </div>
 
-              {error && (
+              {errors.general && (
                 <div className="text-red-500 text-sm">
-                  {error}
+                  {errors.general}
                 </div>
               )}
 
@@ -195,9 +275,9 @@ export default function Register() {
                 </div>
               </div>
 
-              {error && (
+              {errors.general && (
                 <div className="text-red-500 text-sm">
-                  {error}
+                  {errors.general}
                 </div>
               )}
 

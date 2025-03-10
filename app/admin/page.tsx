@@ -20,6 +20,7 @@ interface User {
   accountAgent: string
   dateOfBirth: string
   nationality: string
+  displayName?: string
   editing?: boolean  // To track edit mode for each user
 }
 
@@ -88,10 +89,16 @@ export default function AdminPanel() {
     if (!userToEdit) return
 
     setEditingUser({
+      id: userToEdit.id,
+      displayName: userToEdit.displayName || '',
+      email: userToEdit.email || '',
+      phoneNumber: userToEdit.phoneNumber || '',
       accountAgent: userToEdit.accountAgent || '',
       dateOfBirth: userToEdit.dateOfBirth || '',
       nationality: userToEdit.nationality || '',
-      documents: userToEdit.documents || ''
+      documents: userToEdit.documents || '',
+      products: userToEdit.products || '',
+      securityLevel: userToEdit.securityLevel || '',
     })
 
     setUsers(users.map(user => ({
@@ -102,41 +109,40 @@ export default function AdminPanel() {
 
   const handleSave = async (userId: string) => {
     try {
-      // Find the current user being edited
-      const currentUser = users.find(u => u.id === userId)
-      if (!currentUser) return
-
-      // Only include fields that have been changed
-      const updates: Partial<User> = {}
-      if (editingUser.accountAgent !== undefined) updates.accountAgent = editingUser.accountAgent
-      if (editingUser.dateOfBirth !== undefined) updates.dateOfBirth = editingUser.dateOfBirth
-      if (editingUser.nationality !== undefined) updates.nationality = editingUser.nationality
-      if (editingUser.documents !== undefined) updates.documents = editingUser.documents
+      const updates = {
+        ...(editingUser.displayName && { displayName: editingUser.displayName }),
+        ...(editingUser.email && { email: editingUser.email }),
+        ...(editingUser.phoneNumber && { phoneNumber: editingUser.phoneNumber }),
+        ...(editingUser.accountAgent && { accountAgent: editingUser.accountAgent }),
+        ...(editingUser.dateOfBirth && { dateOfBirth: editingUser.dateOfBirth }),
+        ...(editingUser.nationality && { nationality: editingUser.nationality }),
+        ...(editingUser.documents && { documents: editingUser.documents }),
+        ...(editingUser.products && { products: editingUser.products }),
+        ...(editingUser.securityLevel && { securityLevel: editingUser.securityLevel }),
+      }
 
       const response = await fetch('/api/admin/update-user', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          userId,
-          updates
-        })
+        body: JSON.stringify({ userId, updates })
       })
 
       if (!response.ok) {
         const error = await response.json()
         throw new Error(error.message || 'Failed to update user')
       }
-      
+
       // Update local state
       setUsers(users.map(user => ({
         ...user,
-        ...(user.id === userId ? updates : {}),
+        ...(user.id === userId ? { ...user, ...updates } : {}),
         editing: false
       })))
+
       setEditingUser({})
     } catch (error) {
       console.error('Error updating user:', error)
-      // You might want to show an error message to the user here
+      alert(error instanceof Error ? error.message : 'Failed to update user')
     }
   }
 
@@ -247,6 +253,30 @@ export default function AdminPanel() {
                   <div className="space-y-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-300 mb-1">
+                        Personal Name / Company Name
+                      </label>
+                      <input
+                        type="text"
+                        value={editingUser.displayName || ''}
+                        onChange={(e) => setEditingUser({...editingUser, displayName: e.target.value})}
+                        className="w-full bg-[#222] text-white px-3 py-2 rounded"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-1">
+                        Email
+                      </label>
+                      <input
+                        type="email"
+                        value={editingUser.email || ''}
+                        onChange={(e) => setEditingUser({...editingUser, email: e.target.value})}
+                        className="w-full bg-[#222] text-white px-3 py-2 rounded"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-1">
                         Account Agent
                       </label>
                       <input
@@ -271,6 +301,18 @@ export default function AdminPanel() {
 
                     <div>
                       <label className="block text-sm font-medium text-gray-300 mb-1">
+                        Products
+                      </label>
+                      <input
+                        type="text"
+                        value={editingUser.products || ''}
+                        onChange={(e) => setEditingUser({...editingUser, products: e.target.value})}
+                        className="w-full bg-[#222] text-white px-3 py-2 rounded"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-1">
                         Nationality / Based
                       </label>
                       <input
@@ -283,12 +325,36 @@ export default function AdminPanel() {
 
                     <div>
                       <label className="block text-sm font-medium text-gray-300 mb-1">
+                        Security Level
+                      </label>
+                      <input
+                        type="text"
+                        value={editingUser.securityLevel || ''}
+                        onChange={(e) => setEditingUser({...editingUser, securityLevel: e.target.value})}
+                        className="w-full bg-[#222] text-white px-3 py-2 rounded"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-1">
                         Documents
                       </label>
                       <input
                         type="text"
                         value={editingUser.documents || ''}
                         onChange={(e) => setEditingUser({...editingUser, documents: e.target.value})}
+                        className="w-full bg-[#222] text-white px-3 py-2 rounded"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-1">
+                        Phone Number
+                      </label>
+                      <input
+                        type="text"
+                        value={editingUser.phoneNumber || ''}
+                        onChange={(e) => setEditingUser({...editingUser, phoneNumber: e.target.value})}
                         className="w-full bg-[#222] text-white px-3 py-2 rounded"
                       />
                     </div>

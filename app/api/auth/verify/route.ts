@@ -20,17 +20,30 @@ const generateVerificationCode = () => {
 
 // Add a counter for user IDs
 const getNextUserId = async () => {
-  const counterDoc = await db.collection('counters').doc('users').get()
-  if (!counterDoc.exists) {
-    await db.collection('counters').doc('users').set({ count: 1 })
-    return 1
+  try {
+    // Delete existing counter if it exists (temporary fix)
+    const counterRef = db.collection('counters').doc('users')
+    const counterDoc = await counterRef.get()
+    
+    // If counter doesn't exist or is less than 10000, set it to 10000
+    if (!counterDoc.exists || (counterDoc.data()?.count || 0) < 10000) {
+      await counterRef.set({ count: 10000 })
+      return 10000
+    }
+    
+    // Get the next ID and update the counter
+    const batch = db.batch()
+    const newCount = counterDoc.data()!.count + 1
+    batch.update(counterRef, { count: newCount })
+    await batch.commit()
+    
+    return newCount
+  } catch (error) {
+    console.error('Error getting next user ID:', error)
+    // Fallback to 10000 if there's an error
+    await db.collection('counters').doc('users').set({ count: 10000 })
+    return 10000
   }
-  
-  const batch = db.batch()
-  const newCount = counterDoc.data()!.count + 1
-  batch.update(db.collection('counters').doc('users'), { count: newCount })
-  await batch.commit()
-  return newCount
 }
 
 export async function POST(req: NextRequest) {
@@ -148,12 +161,14 @@ export async function POST(req: NextRequest) {
           uid: uid,
           registrationDate: new Date().toISOString(),
           userId: userId,
-          products: "consulting",
-          securityLevel: "password",
+          products: "Information",
+          securityLevel: "Password",
           documents: "N/A",
           accountAgent: "N/A",
           dateOfBirth: "N/A",
-          nationality: "N/A"
+          nationality: "N/A",
+          email: adminAuth.currentUser?.email || "N/A",
+          displayName: adminAuth.currentUser?.displayName || "N/A"
         })
 
         // Generate a custom token

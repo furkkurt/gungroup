@@ -3,24 +3,28 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { auth } from '@/lib/firebase'
-import { signOut } from 'firebase/auth'
+import { signOut, onAuthStateChanged } from 'firebase/auth'
 import { useVerificationStatus } from '@/hooks/useVerificationStatus'
 
 export default function Header() {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
-  const [userName, setUserName] = useState('')
+  const [displayName, setDisplayName] = useState('')
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const pathname = usePathname()
   const router = useRouter()
   const { isVerified } = useVerificationStatus()
 
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((user) => {
-      setIsLoggedIn(!!user)
-      if (user?.displayName) {
-        setUserName(user.displayName)
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        setIsLoggedIn(true)
+        setDisplayName(user.displayName || '')
+      } else {
+        setIsLoggedIn(false)
+        setDisplayName('')
       }
     })
+
     return () => unsubscribe()
   }, [])
 
@@ -81,7 +85,7 @@ export default function Header() {
           <div className="hidden lg:flex items-center space-x-4">
             {isLoggedIn ? (
               <div className="flex items-center space-x-4">
-                <span className="text-gray-300">Welcome, {userName}</span>
+                <span className="text-gray-300">Welcome, {displayName}</span>
                 <button
                   onClick={handleSignOut}
                   className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-full transition-all transform hover:scale-105"

@@ -5,6 +5,7 @@ import { getFirestore, doc, onSnapshot } from 'firebase/firestore'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import Link from 'next/link'
+import { useVerificationStatus } from '@/hooks/useVerificationStatus'
 
 const db = getFirestore()
 
@@ -25,6 +26,7 @@ interface UserDetails {
 function Dashboard() {
   const [userDetails, setUserDetails] = useState<UserDetails | null>(null)
   const [activeTab] = useState('dashboard')
+  const { isVerified, isLoading } = useVerificationStatus()
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {
@@ -71,12 +73,21 @@ function Dashboard() {
           >
             Dashboard
           </button>
-          <Link
-            href="/financial-room"
-            className="px-6 py-2 rounded-full text-sm font-medium text-white hover:bg-white/10 transition-all"
-          >
-            Financial Room
-          </Link>
+          
+          {isVerified && (
+            <Link
+              href="/financial-room"
+              className="px-6 py-2 rounded-full text-sm font-medium text-white hover:bg-white/10 transition-all"
+            >
+              Financial Room
+            </Link>
+          )}
+          
+          {!isVerified && !isLoading && (
+            <div className="px-6 py-2 rounded-full text-sm font-medium text-gray-500 cursor-not-allowed">
+              Financial Room (Verification Required)
+            </div>
+          )}
         </div>
       </div>
 
