@@ -150,10 +150,8 @@ export async function POST(req: NextRequest) {
         // Get next user ID
         const userId = await getNextUserId()
 
-        // Update the user's phone number in Firebase Auth
-        await adminAuth.updateUser(uid, {
-          phoneNumber: formattedPhone,
-        })
+        // Get the user data from Firebase Auth
+        const userRecord = await adminAuth.getUser(uid)
 
         // Create verification document with additional fields
         await db.collection('verification').doc(uid).set({
@@ -167,8 +165,8 @@ export async function POST(req: NextRequest) {
           accountAgent: "N/A",
           dateOfBirth: "N/A",
           nationality: "N/A",
-          email: adminAuth.currentUser?.email || "N/A",
-          displayName: adminAuth.currentUser?.displayName || "N/A"
+          email: userRecord.email || "N/A",
+          displayName: userRecord.displayName || "N/A"
         })
 
         // Generate a custom token
