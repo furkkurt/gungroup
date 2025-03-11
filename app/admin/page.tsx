@@ -1,15 +1,14 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { getFirestore, collection, onSnapshot } from 'firebase/firestore'
+import { getFirestore, collection, onSnapshot, query } from 'firebase/firestore'
+import { db } from '@/lib/firebase'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
-
-const db = getFirestore();
 
 interface User {
   id: string
   userId: number
-  name?: string
+  displayName?: string
   email?: string
   phoneNumber?: string
   verified: boolean
@@ -20,8 +19,7 @@ interface User {
   accountAgent: string
   dateOfBirth: string
   nationality: string
-  displayName?: string
-  editing?: boolean  // To track edit mode for each user
+  editing?: boolean
 }
 
 export default function AdminPanel() {
@@ -29,7 +27,8 @@ export default function AdminPanel() {
   const [password, setPassword] = useState('')
   const [users, setUsers] = useState<User[]>([])
   const [editingUser, setEditingUser] = useState<Partial<User>>({})
-  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault()
@@ -44,26 +43,28 @@ export default function AdminPanel() {
   useEffect(() => {
     if (!isAuthenticated) return
 
-    const fetchUsers = async () => {
-      try {
-        const response = await fetch('/api/admin/get-users')
-        const data = await response.json()
-        if (data.users) {
-          setUsers(data.users)
-        }
-      } catch (error) {
+    try {
+      const q = query(collection(db, 'verification'))
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        const usersData = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+        })) as User[]
+        
+        setUsers(usersData)
+        setLoading(false)
+      }, (error) => {
         console.error('Error fetching users:', error)
-      }
+        setError('Failed to fetch users')
+        setLoading(false)
+      })
+
+      return () => unsubscribe()
+    } catch (error) {
+      console.error('Error setting up listener:', error)
+      setError('Failed to set up user listener')
+      setLoading(false)
     }
-
-    fetchUsers()
-    
-    // Listen for real-time updates
-    const unsubscribe = onSnapshot(collection(db, 'verification'), () => {
-      fetchUsers()
-    })
-
-    return () => unsubscribe()
   }, [isAuthenticated])
 
   const handleVerifyUser = async (userId: string) => {
@@ -154,6 +155,29 @@ export default function AdminPanel() {
     setEditingUser({})
   }
 
+  const handleDeleteUser = async (userId: string) => {
+    if (!confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
+      return
+    }
+
+    try {
+      const response = await fetch('/api/admin/delete-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId })
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to delete user')
+      }
+
+      // The user will be automatically removed from the list due to our Firestore listener
+    } catch (error) {
+      console.error('Error deleting user:', error)
+      alert('Failed to delete user')
+    }
+  }
+
   if (!isAuthenticated) {
     return (
       <main className="min-h-screen bg-black flex items-center justify-center">
@@ -191,194 +215,207 @@ export default function AdminPanel() {
   return (
     <main className="min-h-screen bg-black">
       <Header />
-      <div className="max-w-6xl mx-auto px-4 py-12">
-        <div className="bg-[#111] rounded-3xl p-8">
-          <h1 className="text-2xl font-bold text-white mb-6">User Management</h1>
-          <div className="overflow-x-auto">
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        <h1 className="text-2xl font-bold text-white mb-8">User Management</h1>
+        
+        {loading && (
+          <div className="text-white">Loading users...</div>
+        )}
+
+        {error && (
+          <div className="text-red-500 bg-red-500/10 border border-red-500 rounded p-4 mb-4">
+            {error}
+          </div>
+        )}
+
+        {!loading && !error && (
+          <div className="bg-[#111] rounded-3xl overflow-hidden">
             <table className="w-full">
-              <thead>
-                <tr className="text-left text-gray-400 border-b border-gray-700">
-                  <th className="pb-3">ID</th>
-                  <th className="pb-3">Name</th>
-                  <th className="pb-3">Email</th>
-                  <th className="pb-3">Phone</th>
-                  <th className="pb-3">Products</th>
-                  <th className="pb-3">Status</th>
-                  <th className="pb-3">Actions</th>
+              <thead className="bg-[#1E1E1E]">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">ID</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Name</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Email</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Phone</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Products</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
-              <tbody>
-                {users.map((user) => (
+              <tbody className="divide-y divide-gray-800">
+                {users.map(user => (
                   <tr key={user.id}>
-                    <td className="py-4 text-white">#{user.userId}</td>
-                    <td className="py-4 text-white">{user.name}</td>
-                    <td className="py-4 text-white">{user.email}</td>
-                    <td className="py-4 text-white">{user.phoneNumber}</td>
-                    <td className="py-4 text-white">{user.products}</td>
-                    <td className="py-4">
-                      <span className={`px-2 py-1 rounded-full text-xs ${
-                        user.verified 
-                          ? 'bg-green-500/20 text-green-500' 
-                          : 'bg-yellow-500/20 text-yellow-500'
-                      }`}>
+                    <td className="px-6 py-4 text-sm text-gray-300">{user.userId}</td>
+                    <td className="px-6 py-4 text-sm text-gray-300">{user.displayName}</td>
+                    <td className="px-6 py-4 text-sm text-gray-300">{user.email}</td>
+                    <td className="px-6 py-4 text-sm text-gray-300">{user.phoneNumber}</td>
+                    <td className="px-6 py-4 text-sm text-gray-300">{user.products}</td>
+                    <td className="px-6 py-4 text-sm">
+                      <span className={`px-2 py-1 rounded-full text-xs ${user.verified ? 'bg-green-500/20 text-green-500' : 'bg-yellow-500/20 text-yellow-500'}`}>
                         {user.verified ? 'Verified' : 'Pending'}
                       </span>
                     </td>
-                    <td className="py-4 space-x-2">
+                    <td className="px-6 py-4 text-sm text-gray-300">
                       <button
                         onClick={() => handleEdit(user.id)}
-                        className="px-3 py-1 bg-[#00ffd5] text-black rounded-full text-sm hover:bg-[#00e6c0] transition-all"
+                        className="text-[#00ffd5] hover:text-[#00e6c0] mr-3"
                       >
-                        Edit Details
+                        Edit
                       </button>
                       {!user.verified && (
                         <button
                           onClick={() => handleVerifyUser(user.id)}
-                          className="px-3 py-1 bg-[#00ffd5] text-black rounded-full text-sm hover:bg-[#00e6c0] transition-all"
+                          className="text-green-500 hover:text-green-400 mr-3"
                         >
                           Verify
                         </button>
                       )}
+                      <button
+                        onClick={() => handleDeleteUser(user.id)}
+                        className="text-red-500 hover:text-red-400"
+                      >
+                        Delete
+                      </button>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
 
-            {/* Edit Modal */}
-            {users.find(u => u.editing) && (
-              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-                <div className="relative bg-[#111] rounded-3xl p-8 max-w-md w-full my-8">
-                  <h2 className="text-xl font-bold text-white mb-6">Edit User Details</h2>
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-1">
-                        Personal Name / Company Name
-                      </label>
-                      <input
-                        type="text"
-                        value={editingUser.displayName || ''}
-                        onChange={(e) => setEditingUser({...editingUser, displayName: e.target.value})}
-                        className="w-full bg-[#222] text-white px-3 py-2 rounded"
-                      />
-                    </div>
+        {/* Edit Modal */}
+        {users.find(u => u.editing) && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+            <div className="relative bg-[#111] rounded-3xl p-8 max-w-md w-full my-8">
+              <h2 className="text-xl font-bold text-white mb-6">Edit User Details</h2>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">
+                    Personal Name / Company Name
+                  </label>
+                  <input
+                    type="text"
+                    value={editingUser.displayName || ''}
+                    onChange={(e) => setEditingUser({...editingUser, displayName: e.target.value})}
+                    className="w-full bg-[#222] text-white px-3 py-2 rounded"
+                  />
+                </div>
 
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-1">
-                        Email
-                      </label>
-                      <input
-                        type="email"
-                        value={editingUser.email || ''}
-                        onChange={(e) => setEditingUser({...editingUser, email: e.target.value})}
-                        className="w-full bg-[#222] text-white px-3 py-2 rounded"
-                      />
-                    </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    value={editingUser.email || ''}
+                    onChange={(e) => setEditingUser({...editingUser, email: e.target.value})}
+                    className="w-full bg-[#222] text-white px-3 py-2 rounded"
+                  />
+                </div>
 
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-1">
-                        Account Agent
-                      </label>
-                      <input
-                        type="text"
-                        value={editingUser.accountAgent || ''}
-                        onChange={(e) => setEditingUser({...editingUser, accountAgent: e.target.value})}
-                        className="w-full bg-[#222] text-white px-3 py-2 rounded"
-                      />
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-1">
-                        Date of Birth / Incorporate
-                      </label>
-                      <input
-                        type="text"
-                        value={editingUser.dateOfBirth || ''}
-                        onChange={(e) => setEditingUser({...editingUser, dateOfBirth: e.target.value})}
-                        className="w-full bg-[#222] text-white px-3 py-2 rounded"
-                      />
-                    </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">
+                    Account Agent
+                  </label>
+                  <input
+                    type="text"
+                    value={editingUser.accountAgent || ''}
+                    onChange={(e) => setEditingUser({...editingUser, accountAgent: e.target.value})}
+                    className="w-full bg-[#222] text-white px-3 py-2 rounded"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">
+                    Date of Birth / Incorporate
+                  </label>
+                  <input
+                    type="text"
+                    value={editingUser.dateOfBirth || ''}
+                    onChange={(e) => setEditingUser({...editingUser, dateOfBirth: e.target.value})}
+                    className="w-full bg-[#222] text-white px-3 py-2 rounded"
+                  />
+                </div>
 
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-1">
-                        Products
-                      </label>
-                      <input
-                        type="text"
-                        value={editingUser.products || ''}
-                        onChange={(e) => setEditingUser({...editingUser, products: e.target.value})}
-                        className="w-full bg-[#222] text-white px-3 py-2 rounded"
-                      />
-                    </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">
+                    Products
+                  </label>
+                  <input
+                    type="text"
+                    value={editingUser.products || ''}
+                    onChange={(e) => setEditingUser({...editingUser, products: e.target.value})}
+                    className="w-full bg-[#222] text-white px-3 py-2 rounded"
+                  />
+                </div>
 
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-1">
-                        Nationality / Based
-                      </label>
-                      <input
-                        type="text"
-                        value={editingUser.nationality || ''}
-                        onChange={(e) => setEditingUser({...editingUser, nationality: e.target.value})}
-                        className="w-full bg-[#222] text-white px-3 py-2 rounded"
-                      />
-                    </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">
+                    Nationality / Based
+                  </label>
+                  <input
+                    type="text"
+                    value={editingUser.nationality || ''}
+                    onChange={(e) => setEditingUser({...editingUser, nationality: e.target.value})}
+                    className="w-full bg-[#222] text-white px-3 py-2 rounded"
+                  />
+                </div>
 
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-1">
-                        Security Level
-                      </label>
-                      <input
-                        type="text"
-                        value={editingUser.securityLevel || ''}
-                        onChange={(e) => setEditingUser({...editingUser, securityLevel: e.target.value})}
-                        className="w-full bg-[#222] text-white px-3 py-2 rounded"
-                      />
-                    </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">
+                    Security Level
+                  </label>
+                  <input
+                    type="text"
+                    value={editingUser.securityLevel || ''}
+                    onChange={(e) => setEditingUser({...editingUser, securityLevel: e.target.value})}
+                    className="w-full bg-[#222] text-white px-3 py-2 rounded"
+                  />
+                </div>
 
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-1">
-                        Documents
-                      </label>
-                      <input
-                        type="text"
-                        value={editingUser.documents || ''}
-                        onChange={(e) => setEditingUser({...editingUser, documents: e.target.value})}
-                        className="w-full bg-[#222] text-white px-3 py-2 rounded"
-                      />
-                    </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">
+                    Documents
+                  </label>
+                  <input
+                    type="text"
+                    value={editingUser.documents || ''}
+                    onChange={(e) => setEditingUser({...editingUser, documents: e.target.value})}
+                    className="w-full bg-[#222] text-white px-3 py-2 rounded"
+                  />
+                </div>
 
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-1">
-                        Phone Number
-                      </label>
-                      <input
-                        type="text"
-                        value={editingUser.phoneNumber || ''}
-                        onChange={(e) => setEditingUser({...editingUser, phoneNumber: e.target.value})}
-                        className="w-full bg-[#222] text-white px-3 py-2 rounded"
-                      />
-                    </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">
+                    Phone Number
+                  </label>
+                  <input
+                    type="text"
+                    value={editingUser.phoneNumber || ''}
+                    onChange={(e) => setEditingUser({...editingUser, phoneNumber: e.target.value})}
+                    className="w-full bg-[#222] text-white px-3 py-2 rounded"
+                  />
+                </div>
 
-                    <div className="flex justify-end space-x-3 mt-6 pt-4 border-t border-gray-700">
-                      <button
-                        onClick={() => handleCancel(users.find(u => u.editing)?.id!)}
-                        className="px-4 py-2 bg-red-500 text-black rounded-full text-sm hover:bg-red-400 transition-all"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        onClick={() => handleSave(users.find(u => u.editing)?.id!)}
-                        className="px-4 py-2 bg-green-500 text-black rounded-full text-sm hover:bg-green-400 transition-all"
-                      >
-                        Save Changes
-                      </button>
-                    </div>
-                  </div>
+                <div className="flex justify-end space-x-3 mt-6 pt-4 border-t border-gray-700">
+                  <button
+                    onClick={() => handleCancel(users.find(u => u.editing)?.id!)}
+                    className="px-4 py-2 bg-red-500 text-black rounded-full text-sm hover:bg-red-400 transition-all"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => handleSave(users.find(u => u.editing)?.id!)}
+                    className="px-4 py-2 bg-green-500 text-black rounded-full text-sm hover:bg-green-400 transition-all"
+                  >
+                    Save Changes
+                  </button>
                 </div>
               </div>
-            )}
+            </div>
           </div>
-        </div>
+        )}
       </div>
       <Footer />
     </main>
