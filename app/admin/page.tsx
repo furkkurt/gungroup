@@ -44,8 +44,10 @@ export default function AdminPanel() {
     if (!isAuthenticated) return
 
     try {
+      console.log('Fetching users...')
       const q = query(collection(db, 'verification'))
       const unsubscribe = onSnapshot(q, (snapshot) => {
+        console.log('Got snapshot:', snapshot.size, 'documents')
         const usersData = snapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data(),
@@ -54,14 +56,18 @@ export default function AdminPanel() {
         setUsers(usersData)
         setLoading(false)
       }, (error) => {
-        console.error('Error fetching users:', error)
+        console.error('Detailed snapshot error:', {
+          code: error.code,
+          message: error.message,
+          stack: error.stack
+        })
         setError('Failed to fetch users')
         setLoading(false)
       })
 
       return () => unsubscribe()
     } catch (error) {
-      console.error('Error setting up listener:', error)
+      console.error('Setup error:', error)
       setError('Failed to set up user listener')
       setLoading(false)
     }

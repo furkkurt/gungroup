@@ -9,6 +9,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing user ID' }, { status: 400 })
     }
 
+    console.log('Admin credentials:', {
+      projectId: process.env.FIREBASE_PROJECT_ID,
+      clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+      privateKeyLength: process.env.FIREBASE_PRIVATE_KEY?.length
+    })
+
     const userRef = adminDb.collection('verification').doc(userId)
     await userRef.update({
       verified: verified,
@@ -17,7 +23,16 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Error updating verification status:', error)
+    console.error('Detailed error:', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      env: {
+        hasProjectId: !!process.env.FIREBASE_PROJECT_ID,
+        hasClientEmail: !!process.env.FIREBASE_CLIENT_EMAIL,
+        hasPrivateKey: !!process.env.FIREBASE_PRIVATE_KEY,
+      }
+    })
+    
     return NextResponse.json({ 
       error: 'Failed to update verification status',
       details: error instanceof Error ? error.message : 'Unknown error'
