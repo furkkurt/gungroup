@@ -15,7 +15,7 @@ export default function Footer() {
           <div>
             <h3 className="text-lg font-semibold text-[#00ffd5] mb-4">Contact</h3>
             <ul className="space-y-2 text-gray-400">
-              <li className="hover:text-white transition-colors">Email: info@gungroup.com</li>
+              <li className="hover:text-white transition-colors">Email: info@intfinex.com</li>
               <li className="hover:text-white transition-colors">Tel: +90 (212) 555 0000</li>
             </ul>
           </div>
@@ -47,14 +47,14 @@ export default function Footer() {
           <div>
             <h3 className="text-lg font-semibold text-[#00ffd5] mb-4">Address</h3>
             <p className="text-gray-400">
-              Istanbul, Turkey
+              London, UK
             </p>
           </div>
         </div>
 
         <div className="mt-8 pt-8 border-t border-gray-700">
           <div className="flex flex-col md:flex-row justify-between items-center">
-            <p className="text-gray-400">&copy; 2025 Gün Group. All rights reserved.</p>
+            <p className="text-gray-400">&copy; 2025 Intfinex. All rights reserved.</p>
             <div className="flex space-x-6 mt-4 md:mt-0">
               <Link href="/privacy" className="text-gray-400 hover:text-white transition-colors">
                 Privacy Policy

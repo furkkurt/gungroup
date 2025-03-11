@@ -16,8 +16,8 @@ const roboto = Roboto({
 });
 
 export const metadata: Metadata = {
-  title: "Gün Group - Finansal Çözümler",
-  description: "Gün Group Holding, küresel piyasalarda profesyonel finansal çözümler sunar.",
+  title: "Intfinex",
+  description: "Intfinex is a platform for financial solutions.",
 };
 
 export default function RootLayout({

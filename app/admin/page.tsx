@@ -67,21 +67,22 @@ export default function AdminPanel() {
     }
   }, [isAuthenticated])
 
-  const handleVerifyUser = async (userId: string) => {
+  const handleVerifyUser = async (userId: string, currentStatus: boolean) => {
     try {
       const response = await fetch('/api/admin/verify-user', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ userId })
+        body: JSON.stringify({ userId, verified: !currentStatus })
       })
 
       if (!response.ok) {
-        throw new Error('Failed to verify user')
+        throw new Error('Failed to update verification status')
       }
     } catch (error) {
-      console.error('Error verifying user:', error)
+      console.error('Error updating verification status:', error)
+      alert('Failed to update verification status')
     }
   }
 
@@ -111,6 +112,8 @@ export default function AdminPanel() {
   const handleSave = async (userId: string) => {
     try {
       const updates = {
+        ...(editingUser.userId && { userId: editingUser.userId }),
+        ...(editingUser.registrationDate && { registrationDate: editingUser.registrationDate }),
         ...(editingUser.displayName && { displayName: editingUser.displayName }),
         ...(editingUser.email && { email: editingUser.email }),
         ...(editingUser.phoneNumber && { phoneNumber: editingUser.phoneNumber }),
@@ -133,7 +136,6 @@ export default function AdminPanel() {
         throw new Error(error.message || 'Failed to update user')
       }
 
-      // Update local state
       setUsers(users.map(user => ({
         ...user,
         ...(user.id === userId ? { ...user, ...updates } : {}),
@@ -262,14 +264,16 @@ export default function AdminPanel() {
                       >
                         Edit
                       </button>
-                      {!user.verified && (
-                        <button
-                          onClick={() => handleVerifyUser(user.id)}
-                          className="text-green-500 hover:text-green-400 mr-3"
-                        >
-                          Verify
-                        </button>
-                      )}
+                      <button
+                        onClick={() => handleVerifyUser(user.id, user.verified)}
+                        className={`${
+                          user.verified 
+                            ? 'text-yellow-500 hover:text-yellow-400' 
+                            : 'text-green-500 hover:text-green-400'
+                        } mr-3`}
+                      >
+                        {user.verified ? 'Unverify' : 'Verify'}
+                      </button>
                       <button
                         onClick={() => handleDeleteUser(user.id)}
                         className="text-red-500 hover:text-red-400"
@@ -290,6 +294,30 @@ export default function AdminPanel() {
             <div className="relative bg-[#111] rounded-3xl p-8 max-w-md w-full my-8">
               <h2 className="text-xl font-bold text-white mb-6">Edit User Details</h2>
               <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">
+                    User ID
+                  </label>
+                  <input
+                    type="number"
+                    value={editingUser.userId || ''}
+                    onChange={(e) => setEditingUser({...editingUser, userId: parseInt(e.target.value)})}
+                    className="w-full bg-[#222] text-white px-3 py-2 rounded"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">
+                    Registration Date
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={editingUser.registrationDate ? new Date(editingUser.registrationDate).toISOString().slice(0, 16) : ''}
+                    onChange={(e) => setEditingUser({...editingUser, registrationDate: new Date(e.target.value).toISOString()})}
+                    className="w-full bg-[#222] text-white px-3 py-2 rounded"
+                  />
+                </div>
+
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-1">
                     Personal Name / Company Name
@@ -331,9 +359,12 @@ export default function AdminPanel() {
                     Date of Birth / Incorporate
                   </label>
                   <input
-                    type="text"
-                    value={editingUser.dateOfBirth || ''}
-                    onChange={(e) => setEditingUser({...editingUser, dateOfBirth: e.target.value})}
+                    type="date"
+                    value={editingUser.dateOfBirth ? new Date(editingUser.dateOfBirth).toISOString().split('T')[0] : ''}
+                    onChange={(e) => setEditingUser({
+                      ...editingUser, 
+                      dateOfBirth: e.target.value ? new Date(e.target.value).toISOString() : ''
+                    })}
                     className="w-full bg-[#222] text-white px-3 py-2 rounded"
                   />
                 </div>

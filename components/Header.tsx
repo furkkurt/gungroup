@@ -42,7 +42,7 @@ export default function Header() {
         <div className="flex justify-between items-center">
           <div className="flex items-center space-x-8">
             <Link href="/" className="text-white font-bold text-xl">
-              GÜN GROUP
+              Intfinex
             </Link>
             <div className="hidden md:flex space-x-6">
               {navItems.map((item, index) => (
